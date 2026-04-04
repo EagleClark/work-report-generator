@@ -1,11 +1,12 @@
-import { ColorSchemeToggle } from '../components/ColorSchemeToggle/ColorSchemeToggle';
-import { Welcome } from '../components/Welcome/Welcome';
+import { Container, Title, Text } from '@mantine/core';
+import { TaskTable } from '../components/TaskTable/TaskTable';
 
 export function HomePage() {
   return (
-    <>
-      <Welcome />
-      <ColorSchemeToggle />
-    </>
+    <Container size="xl" py="xl">
+      <Title order={1} mb="xs">任务管理系统</Title>
+      <Text c="dimmed" mb="xl">管理和查看每周任务</Text>
+      <TaskTable />
+    </Container>
   );
 }
