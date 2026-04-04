@@ -32,23 +32,29 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
     e.preventDefault();
     setLoading(true);
     try {
-      await onSubmit({
+      const submitData: CreateTaskDto = {
         project,
         assignee,
         usDts,
         taskDetail,
-        progress,
         estimatedWorkload,
         plannedStartDate,
         plannedEndDate,
-        actualWorkload: isEdit ? actualWorkload : undefined,
-        weeklyWorkload: isEdit ? weeklyWorkload : undefined,
-        actualStartDate: isEdit ? actualStartDate : undefined,
-        actualEndDate: isEdit ? actualEndDate : undefined,
         year,
         weekNumber,
         remark: link || remark,
-      });
+      };
+      
+      // 编辑时才添加进度和实际工作相关字段
+      if (isEdit) {
+        submitData.progress = progress;
+        if (actualWorkload) submitData.actualWorkload = actualWorkload;
+        if (weeklyWorkload) submitData.weeklyWorkload = weeklyWorkload;
+        if (actualStartDate && actualStartDate.trim()) submitData.actualStartDate = actualStartDate;
+        if (actualEndDate && actualEndDate.trim()) submitData.actualEndDate = actualEndDate;
+      }
+      
+      await onSubmit(submitData);
       if (!isEdit) {
         resetForm();
       }
@@ -125,17 +131,28 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
           description={`${taskDetail.length}/200`}
         />
 
-        {/* 第四行：当前进度 + 预计工作量（必填） */}
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <NumberInput
-            label="当前进度"
-            suffix=" %"
-            value={progress}
-            onChange={(val) => setProgress(Number(val) || 0)}
-            min={0}
-            max={100}
-            required
-          />
+        {/* 第四行：预计工作量（新增时）/ 当前进度 + 预计工作量（编辑时） */}
+        {isEdit ? (
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <NumberInput
+              label="当前进度"
+              suffix=" %"
+              value={progress}
+              onChange={(val) => setProgress(Number(val) || 0)}
+              min={0}
+              max={100}
+              required
+            />
+            <NumberInput
+              label="预计工作量"
+              suffix=" 人天"
+              value={estimatedWorkload}
+              onChange={(val) => setEstimatedWorkload(Number(val) || 0)}
+              min={0}
+              required
+            />
+          </SimpleGrid>
+        ) : (
           <NumberInput
             label="预计工作量"
             suffix=" 人天"
@@ -144,7 +161,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
             min={0}
             required
           />
-        </SimpleGrid>
+        )}
 
         {/* 第五行：计划开始时间 + 计划结束时间（必填） */}
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
