@@ -2,6 +2,7 @@ export interface Task {
   id: number;
   project: string;
   usDts?: string;
+  usDtsLink?: string;
   taskDetail: string;
   progress: number;
   estimatedWorkload: number;
@@ -23,6 +24,7 @@ export interface Task {
 export interface CreateTaskDto {
   project: string;
   usDts?: string;
+  usDtsLink?: string;
   taskDetail: string;
   progress?: number;
   estimatedWorkload?: number;
@@ -42,6 +44,7 @@ export interface CreateTaskDto {
 export interface UpdateTaskDto {
   project?: string;
   usDts?: string;
+  usDtsLink?: string;
   taskDetail?: string;
   progress?: number;
   estimatedWorkload?: number;

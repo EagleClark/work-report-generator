@@ -9,11 +9,37 @@ interface TaskFormProps {
   isEdit?: boolean;
 }
 
+interface FormErrors {
+  project?: string;
+  assignee?: string;
+  taskDetail?: string;
+  estimatedWorkload?: string;
+  plannedStartDate?: string;
+  plannedEndDate?: string;
+  usDtsLink?: string;
+  progress?: string;
+  actualStartDate?: string;
+  actualEndDate?: string;
+  actualWorkload?: string;
+  weeklyWorkload?: string;
+}
+
+// 验证URL是否有效
+function isValidUrl(url: string): boolean {
+  if (!url) return true; // 空值允许
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormProps) {
   const [project, setProject] = useState(initialData?.project || '');
   const [assignee, setAssignee] = useState(initialData?.assignee || '');
   const [usDts, setUsDts] = useState(initialData?.usDts || '');
-  const [link, setLink] = useState(initialData?.remark || ''); // 用 remark 字段存链接
+  const [usDtsLink, setUsDtsLink] = useState(initialData?.usDtsLink || '');
   const [taskDetail, setTaskDetail] = useState(initialData?.taskDetail || '');
   const [progress, setProgress] = useState(initialData?.progress || 0);
   const [estimatedWorkload, setEstimatedWorkload] = useState(initialData?.estimatedWorkload || 0);
@@ -27,9 +53,84 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
   const [weekNumber, setWeekNumber] = useState(initialData?.weekNumber || getCurrentWeekNumber());
   const [remark, setRemark] = useState(initialData?.remark || '');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  const validate = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    // 必填字段验证
+    if (!project.trim()) {
+      newErrors.project = '项目名称不能为空';
+    }
+    if (!assignee.trim()) {
+      newErrors.assignee = '责任人不能为空';
+    }
+    if (!taskDetail.trim()) {
+      newErrors.taskDetail = '任务详情不能为空';
+    }
+
+    // 预计工作量不能为0
+    if (estimatedWorkload <= 0) {
+      newErrors.estimatedWorkload = '预计工作量必须大于0';
+    }
+
+    // 计划时间验证：开始时间不能晚于结束时间
+    if (plannedStartDate && plannedEndDate && plannedStartDate > plannedEndDate) {
+      newErrors.plannedStartDate = '计划开始时间不能晚于结束时间';
+      newErrors.plannedEndDate = '计划结束时间不能早于开始时间';
+    }
+
+    // US/DTS链接验证
+    if (usDtsLink && !isValidUrl(usDtsLink)) {
+      newErrors.usDtsLink = '请输入有效的URL链接';
+    }
+
+    // 编辑模式下的额外验证
+    if (isEdit) {
+      // 进度100%时，必须填入实际开始和结束时间
+      if (progress === 100) {
+        if (!actualStartDate) {
+          newErrors.actualStartDate = '进度100%时必须填写实际开始时间';
+        }
+        if (!actualEndDate) {
+          newErrors.actualEndDate = '进度100%时必须填写实际结束时间';
+        }
+      }
+
+      // 进度小于100%时，实际结束时间不应填写
+      if (progress < 100 && actualEndDate) {
+        newErrors.actualEndDate = '进度未完成时不应填写实际结束时间';
+      }
+
+      // 实际开始和结束时间验证
+      if (actualStartDate && actualEndDate && actualStartDate > actualEndDate) {
+        newErrors.actualStartDate = '实际开始时间不能晚于结束时间';
+        newErrors.actualEndDate = '实际结束时间不能早于开始时间';
+      }
+
+      // 实际工作量不能小于本周工作量
+      if (actualWorkload > 0 && weeklyWorkload > actualWorkload) {
+        newErrors.weeklyWorkload = '本周工作量不能大于实际工作量';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const clearError = (field: keyof FormErrors) => {
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validate()) {
+      return;
+    }
+
     setLoading(true);
     try {
       const submitData: CreateTaskDto = {
@@ -42,9 +143,10 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
         plannedEndDate,
         year,
         weekNumber,
-        remark: link || remark,
+        remark,
+        usDtsLink: usDtsLink || undefined,
       };
-      
+
       // 编辑时才添加进度和实际工作相关字段
       if (isEdit) {
         submitData.progress = progress;
@@ -53,7 +155,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
         if (actualStartDate && actualStartDate.trim()) submitData.actualStartDate = actualStartDate;
         if (actualEndDate && actualEndDate.trim()) submitData.actualEndDate = actualEndDate;
       }
-      
+
       await onSubmit(submitData);
       if (!isEdit) {
         resetForm();
@@ -67,7 +169,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
     setProject('');
     setAssignee('');
     setUsDts('');
-    setLink('');
+    setUsDtsLink('');
     setTaskDetail('');
     setProgress(0);
     setEstimatedWorkload(0);
@@ -80,6 +182,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
     setRemark('');
     setYear(new Date().getFullYear());
     setWeekNumber(getCurrentWeekNumber());
+    setErrors({});
   };
 
   return (
@@ -91,15 +194,17 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
             label="项目"
             placeholder="请输入项目名称"
             value={project}
-            onChange={(e) => setProject(e.target.value)}
+            onChange={(e) => { setProject(e.target.value); clearError('project'); }}
             required
+            error={errors.project}
           />
           <TextInput
             label="责任人"
             placeholder="请输入责任人"
             value={assignee}
-            onChange={(e) => setAssignee(e.target.value)}
+            onChange={(e) => { setAssignee(e.target.value); clearError('assignee'); }}
             required
+            error={errors.assignee}
           />
         </SimpleGrid>
 
@@ -114,8 +219,9 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
           <TextInput
             label="US/DTS链接"
             placeholder="请输入US/DTS链接"
-            value={link}
-            onChange={(e) => setLink(e.target.value)}
+            value={usDtsLink}
+            onChange={(e) => { setUsDtsLink(e.target.value); clearError('usDtsLink'); }}
+            error={errors.usDtsLink}
           />
         </SimpleGrid>
 
@@ -124,11 +230,12 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
           label="任务详情"
           placeholder="请输入任务详情"
           value={taskDetail}
-          onChange={(e) => setTaskDetail(e.target.value.slice(0, 200))}
+          onChange={(e) => { setTaskDetail(e.target.value.slice(0, 200)); clearError('taskDetail'); }}
           minRows={3}
           maxLength={200}
           required
           description={`${taskDetail.length}/200`}
+          error={errors.taskDetail}
         />
 
         {/* 第四行：预计工作量（新增时）/ 当前进度 + 预计工作量（编辑时） */}
@@ -138,18 +245,20 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
               label="当前进度"
               suffix=" %"
               value={progress}
-              onChange={(val) => setProgress(Number(val) || 0)}
+              onChange={(val) => { setProgress(Number(val) || 0); clearError('progress'); clearError('actualStartDate'); clearError('actualEndDate'); }}
               min={0}
               max={100}
               required
+              error={errors.progress}
             />
             <NumberInput
               label="预计工作量"
               suffix=" 人天"
               value={estimatedWorkload}
-              onChange={(val) => setEstimatedWorkload(Number(val) || 0)}
+              onChange={(val) => { setEstimatedWorkload(Number(val) || 0); clearError('estimatedWorkload'); }}
               min={0}
               required
+              error={errors.estimatedWorkload}
             />
           </SimpleGrid>
         ) : (
@@ -157,9 +266,10 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
             label="预计工作量"
             suffix=" 人天"
             value={estimatedWorkload}
-            onChange={(val) => setEstimatedWorkload(Number(val) || 0)}
+            onChange={(val) => { setEstimatedWorkload(Number(val) || 0); clearError('estimatedWorkload'); }}
             min={0}
             required
+            error={errors.estimatedWorkload}
           />
         )}
 
@@ -169,15 +279,17 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
             label="计划开始时间"
             type="date"
             value={plannedStartDate}
-            onChange={(e) => setPlannedStartDate(e.target.value)}
+            onChange={(e) => { setPlannedStartDate(e.target.value); clearError('plannedStartDate'); }}
             required
+            error={errors.plannedStartDate}
           />
           <TextInput
             label="计划结束时间"
             type="date"
             value={plannedEndDate}
-            onChange={(e) => setPlannedEndDate(e.target.value)}
+            onChange={(e) => { setPlannedEndDate(e.target.value); clearError('plannedEndDate'); }}
             required
+            error={errors.plannedEndDate}
           />
         </SimpleGrid>
 
@@ -188,15 +300,17 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
               label="实际工作量"
               suffix=" 人天"
               value={actualWorkload}
-              onChange={(val) => setActualWorkload(Number(val) || 0)}
+              onChange={(val) => { setActualWorkload(Number(val) || 0); clearError('actualWorkload'); clearError('weeklyWorkload'); }}
               min={0}
+              error={errors.actualWorkload}
             />
             <NumberInput
               label="本周工作量"
               suffix=" 人天"
               value={weeklyWorkload}
-              onChange={(val) => setWeeklyWorkload(Number(val) || 0)}
+              onChange={(val) => { setWeeklyWorkload(Number(val) || 0); clearError('weeklyWorkload'); }}
               min={0}
+              error={errors.weeklyWorkload}
             />
           </SimpleGrid>
         )}
@@ -208,13 +322,18 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
               label="实际开始时间"
               type="date"
               value={actualStartDate}
-              onChange={(e) => setActualStartDate(e.target.value)}
+              onChange={(e) => { setActualStartDate(e.target.value); clearError('actualStartDate'); }}
+              error={errors.actualStartDate}
+              description={progress === 100 ? '进度100%时必填' : ''}
             />
             <TextInput
               label="实际结束时间"
               type="date"
               value={actualEndDate}
-              onChange={(e) => setActualEndDate(e.target.value)}
+              onChange={(e) => { setActualEndDate(e.target.value); clearError('actualEndDate'); }}
+              error={errors.actualEndDate}
+              description={progress === 100 ? '进度100%时必填' : progress < 100 ? '进度未完成时不需填写' : ''}
+              disabled={progress < 100}
             />
           </SimpleGrid>
         )}
@@ -288,12 +407,12 @@ function getWeekDateRange(year: number, week: number): string {
   }
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
-  
+
   const formatDate = (d: Date) => {
     const month = d.getMonth() + 1;
     const day = d.getDate();
     return `${month}月${day}日`;
   };
-  
+
   return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
 }

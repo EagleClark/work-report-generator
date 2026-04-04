@@ -9,6 +9,10 @@ export class CreateTaskDto {
   @IsString()
   usDts?: string;
 
+  @IsOptional()
+  @IsString()
+  usDtsLink?: string;
+
   @IsNotEmpty()
   @IsString()
   taskDetail: string;

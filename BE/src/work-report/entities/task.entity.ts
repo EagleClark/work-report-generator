@@ -11,6 +11,9 @@ export class Task {
   @Column({ nullable: true })
   usDts: string;
 
+  @Column({ nullable: true })
+  usDtsLink: string;
+
   @Column('text')
   taskDetail: string;
 

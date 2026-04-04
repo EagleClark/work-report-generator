@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Table, Group, Button, NumberInput, Modal, Badge, Text, Progress } from '@mantine/core';
+import { Table, Group, Button, NumberInput, Modal, Badge, Text, TextInput, ScrollArea, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { taskApi } from '../../services/task.api';
 import type { Task, CreateTaskDto } from '../../types/task';
@@ -14,6 +14,8 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [weekNumber, setWeekNumber] = useState<number | string>('');
+  const [projectFilter, setProjectFilter] = useState('');
+  const [assigneeFilter, setAssigneeFilter] = useState('');
   const [loading, setLoading] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
@@ -92,6 +94,35 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
     return 'gray';
   };
 
+  // Filter tasks by project and assignee
+  const filteredTasks = tasks.filter((task) => {
+    const matchProject = !projectFilter || task.project.toLowerCase().includes(projectFilter.toLowerCase());
+    const matchAssignee = !assigneeFilter || (task.assignee && task.assignee.toLowerCase().includes(assigneeFilter.toLowerCase()));
+    return matchProject && matchAssignee;
+  });
+
+  // 渲染US/DTS，支持链接
+  const renderUsDts = (task: Task) => {
+    if (!task.usDts) {
+      return <Text c="dimmed">NA</Text>;
+    }
+    if (task.usDtsLink && task.usDtsLink.match(/^https?:\/\/.+/)) {
+      return (
+        <Text
+          component="a"
+          href={task.usDtsLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          c="blue"
+          style={{ cursor: 'pointer' }}
+        >
+          {task.usDts}
+        </Text>
+      );
+    }
+    return <Text>{task.usDts}</Text>;
+  };
+
   return (
     <div>
       <Group mb="md" align="flex-end">
@@ -113,6 +144,20 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
           max={53}
           style={{ width: 120 }}
         />
+        <TextInput
+          label="项目筛选"
+          placeholder="输入项目名称"
+          value={projectFilter}
+          onChange={(e) => setProjectFilter(e.target.value)}
+          style={{ width: 150 }}
+        />
+        <TextInput
+          label="责任人筛选"
+          placeholder="输入责任人"
+          value={assigneeFilter}
+          onChange={(e) => setAssigneeFilter(e.target.value)}
+          style={{ width: 150 }}
+        />
         <Button onClick={handleSearch} loading={loading}>
           查询
         </Button>
@@ -121,69 +166,100 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
         </Button>
       </Group>
 
-      <Table striped highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>ID</Table.Th>
-            <Table.Th>项目</Table.Th>
-            <Table.Th>US/DTS</Table.Th>
-            <Table.Th>任务详情</Table.Th>
-            <Table.Th>进度</Table.Th>
-            <Table.Th>预计工作量</Table.Th>
-            <Table.Th>实际工作量</Table.Th>
-            <Table.Th>本周工作量</Table.Th>
-            <Table.Th>周数</Table.Th>
-            <Table.Th>操作</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {tasks.length === 0 ? (
+      <Group mb="sm">
+        <Text size="sm" c="dimmed">工作量单位：人天</Text>
+      </Group>
+      <ScrollArea>
+        <Table striped highlightOnHover>
+          <Table.Thead>
             <Table.Tr>
-              <Table.Td colSpan={9}>
-                <Text c="dimmed" ta="center">暂无数据</Text>
-              </Table.Td>
+              <Table.Th style={{ width: 100 }}>项目</Table.Th>
+              <Table.Th style={{ width: 200 }}>US/DTS</Table.Th>
+              <Table.Th style={{ width: 350 }}>任务详情</Table.Th>
+              <Table.Th style={{ width: 90 }}>进度</Table.Th>
+              <Table.Th style={{ width: 90 }}>预计</Table.Th>
+              <Table.Th style={{ width: 90 }}>实际</Table.Th>
+              <Table.Th style={{ width: 90 }}>本周</Table.Th>
+              <Table.Th style={{ width: 200 }}>计划时间</Table.Th>
+              <Table.Th style={{ width: 200 }}>实际时间</Table.Th>
+              <Table.Th style={{ width: 90 }}>责任人</Table.Th>
+              <Table.Th style={{ width: 100 }}>备注</Table.Th>
+              <Table.Th style={{ width: 100 }}>操作</Table.Th>
             </Table.Tr>
-          ) : (
-            tasks.map((task) => (
-              <Table.Tr key={task.id}>
-                <Table.Td>{task.id}</Table.Td>
-                <Table.Td>{task.project}</Table.Td>
-                <Table.Td>{task.usDts || '-'}</Table.Td>
-                <Table.Td>
-                  <Text lineClamp={2}>{task.taskDetail}</Text>
-                </Table.Td>
-                <Table.Td>
-                  <Group gap="xs">
-                    <Progress
-                      value={task.progress}
-                      color={getProgressColor(task.progress)}
-                      size="sm"
-                      style={{ width: 60 }}
-                    />
-                    <Text size="xs">{task.progress}%</Text>
-                  </Group>
-                </Table.Td>
-                <Table.Td>{task.estimatedWorkload || '-'} 人天</Table.Td>
-                <Table.Td>{task.actualWorkload || '-'} 人天</Table.Td>
-                <Table.Td>{task.weeklyWorkload || '-'} 人天</Table.Td>
-                <Table.Td>
-                  <Badge>第{task.weekNumber}周</Badge>
-                </Table.Td>
-                <Table.Td>
-                  <Group gap="xs">
-                    <Button size="xs" variant="subtle" onClick={() => openEditModal(task)}>
-                      编辑
-                    </Button>
-                    <Button size="xs" variant="subtle" color="red" onClick={() => handleDeleteClick(task.id)}>
-                      删除
-                    </Button>
-                  </Group>
+          </Table.Thead>
+          <Table.Tbody>
+            {filteredTasks.length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={12}>
+                  <Text c="dimmed" ta="center">暂无数据</Text>
                 </Table.Td>
               </Table.Tr>
-            ))
-          )}
-        </Table.Tbody>
-      </Table>
+            ) : (
+              filteredTasks.map((task) => (
+                <Table.Tr key={task.id}>
+                  <Table.Td>{task.project}</Table.Td>
+                  <Table.Td style={{ width: 200 }}>{renderUsDts(task)}</Table.Td>
+                  <Table.Td style={{ maxWidth: 350 }}>
+                    <Tooltip
+                      label={task.taskDetail}
+                      multiline
+                      maw={400}
+                      styles={{ tooltip: { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } }}
+                    >
+                      <Text lineClamp={2} style={{ maxWidth: 350 }}>{task.taskDetail}</Text>
+                    </Tooltip>
+                  </Table.Td>
+                  <Table.Td style={{ width: 90 }}>
+                    <Badge color={getProgressColor(task.progress)}>
+                      {task.progress}%
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td style={{ width: 90 }}>{task.estimatedWorkload || '-'}</Table.Td>
+                  <Table.Td style={{ width: 90 }}>{task.actualWorkload || '-'}</Table.Td>
+                  <Table.Td style={{ width: 90 }}>{task.weeklyWorkload || '-'}</Table.Td>
+                  <Table.Td style={{ width: 200 }}>
+                    <Text size="xs">
+                      {task.plannedStartDate || '-'} ~ {task.plannedEndDate || '-'}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td style={{ width: 200 }}>
+                    <Text size="xs">
+                      {task.actualStartDate || '-'} ~ {task.actualEndDate || '-'}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td style={{ width: 90 }}>{task.assignee || '-'}</Table.Td>
+                  <Table.Td style={{ width: 100 }}>
+                    {task.remark ? (
+                      <Tooltip
+                        label={task.remark}
+                        multiline
+                        maw={300}
+                        styles={{ tooltip: { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } }}
+                      >
+                        <span style={{ display: 'inline-block', cursor: 'pointer' }}>
+                          <Text lineClamp={2} style={{ maxWidth: 100 }}>{task.remark}</Text>
+                        </span>
+                      </Tooltip>
+                    ) : (
+                      <Text c="dimmed">-</Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td style={{ width: 100 }}>
+                    <Group gap={4} wrap="nowrap">
+                      <Button size="compact-xs" variant="light" onClick={() => openEditModal(task)}>
+                        编辑
+                      </Button>
+                      <Button size="compact-xs" variant="light" color="red" onClick={() => handleDeleteClick(task.id)}>
+                        删除
+                      </Button>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))
+            )}
+          </Table.Tbody>
+        </Table>
+      </ScrollArea>
 
       <Modal
         opened={modalOpened}
@@ -225,12 +301,12 @@ function getWeekDateRange(year: number, week: number): string {
   }
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
-  
+
   const formatDate = (d: Date) => {
     const month = d.getMonth() + 1;
     const day = d.getDate();
     return `${month}月${day}日`;
   };
-  
+
   return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
 }
