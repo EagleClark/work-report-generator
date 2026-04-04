@@ -106,6 +106,7 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
         <NumberInput
           label="周数"
           placeholder="全部"
+          description={weekNumber ? getWeekDateRange(year, Number(weekNumber)) : ''}
           value={weekNumber}
           onChange={(val) => setWeekNumber(val)}
           min={1}
@@ -129,6 +130,7 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
             <Table.Th>任务详情</Table.Th>
             <Table.Th>进度</Table.Th>
             <Table.Th>预计工作量</Table.Th>
+            <Table.Th>实际工作量</Table.Th>
             <Table.Th>本周工作量</Table.Th>
             <Table.Th>周数</Table.Th>
             <Table.Th>操作</Table.Th>
@@ -161,8 +163,9 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
                     <Text size="xs">{task.progress}%</Text>
                   </Group>
                 </Table.Td>
-                <Table.Td>{task.estimatedWorkload}</Table.Td>
-                <Table.Td>{task.weeklyWorkload}</Table.Td>
+                <Table.Td>{task.estimatedWorkload || '-'} 人天</Table.Td>
+                <Table.Td>{task.actualWorkload || '-'} 人天</Table.Td>
+                <Table.Td>{task.weeklyWorkload || '-'} 人天</Table.Td>
                 <Table.Td>
                   <Badge>第{task.weekNumber}周</Badge>
                 </Table.Td>
@@ -209,4 +212,25 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
       </Modal>
     </div>
   );
+}
+
+function getWeekDateRange(year: number, week: number): string {
+  const simple = new Date(year, 0, 1 + (week - 1) * 7);
+  const dow = simple.getDay();
+  const weekStart = simple;
+  if (dow <= 4) {
+    weekStart.setDate(simple.getDate() - simple.getDay() + 1);
+  } else {
+    weekStart.setDate(simple.getDate() + 8 - simple.getDay());
+  }
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  
+  const formatDate = (d: Date) => {
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    return `${month}月${day}日`;
+  };
+  
+  return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
 }

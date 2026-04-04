@@ -48,6 +48,7 @@ export function WeeklyReportPage() {
         />
         <NumberInput
           label="周数"
+          description={getWeekDateRange(year, Number(weekNumber))}
           value={weekNumber}
           onChange={(val) => setWeekNumber(Number(val))}
           min={1}
@@ -110,9 +111,9 @@ export function WeeklyReportPage() {
                   <Table.Th>US/DTS</Table.Th>
                   <Table.Th>任务详情</Table.Th>
                   <Table.Th>进度</Table.Th>
-                  <Table.Th>预计</Table.Th>
-                  <Table.Th>本周</Table.Th>
-                  <Table.Th>实际</Table.Th>
+                  <Table.Th>预计(人天)</Table.Th>
+                  <Table.Th>本周(人天)</Table.Th>
+                  <Table.Th>实际(人天)</Table.Th>
                   <Table.Th>计划时间</Table.Th>
                   <Table.Th>实际时间</Table.Th>
                   <Table.Th>责任人</Table.Th>
@@ -169,4 +170,25 @@ function getCurrentWeekNumber(): number {
   const startOfYear = new Date(now.getFullYear(), 0, 1);
   const days = Math.floor((now.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
   return Math.ceil((days + startOfYear.getDay() + 1) / 7);
+}
+
+function getWeekDateRange(year: number, week: number): string {
+  const simple = new Date(year, 0, 1 + (week - 1) * 7);
+  const dow = simple.getDay();
+  const weekStart = simple;
+  if (dow <= 4) {
+    weekStart.setDate(simple.getDate() - simple.getDay() + 1);
+  } else {
+    weekStart.setDate(simple.getDate() + 8 - simple.getDay());
+  }
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  
+  const formatDate = (d: Date) => {
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    return `${month}月${day}日`;
+  };
+  
+  return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
 }
