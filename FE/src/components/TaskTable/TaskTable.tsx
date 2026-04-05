@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Table, Group, Button, Modal, Badge, Text, ScrollArea, Tooltip, Select, Paper } from '@mantine/core';
+import { Table, Group, Button, Modal, Badge, Text, ScrollArea, Tooltip, Select, Paper, ActionIcon } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { taskApi } from '../../services/task.api';
 import { userApi } from '../../services/user.api';
@@ -36,7 +36,10 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
   const canOperateTask = (task: Task): boolean => {
     if (!user) return false;
     if (hasRole([UserRole.ADMIN, UserRole.SUPER_ADMIN])) return true;
-    return String(task.userId) === String(user.id);
+    // 检查 userId 或 assignee 匹配
+    const userIdMatch = task.userId && String(task.userId) === String(user.id);
+    const assigneeMatch = task.assignee === user.username;
+    return userIdMatch || assigneeMatch;
   };
 
   const fetchTasks = async () => {
@@ -134,6 +137,33 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
     return matchProject && matchAssignee;
   });
 
+  // 排序状态
+  type SortField = 'project' | 'assignee' | null;
+  type SortDirection = 'asc' | 'desc';
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // 排序切换
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // 排序后的任务列表
+  const sortedTasks = useMemo(() => {
+    if (!sortField) return filteredTasks;
+    return [...filteredTasks].sort((a, b) => {
+      const aValue = sortField === 'project' ? a.project : (a.assignee || '未分配');
+      const bValue = sortField === 'project' ? b.project : (b.assignee || '未分配');
+      const cmp = aValue.localeCompare(bValue, 'zh-CN');
+      return sortDirection === 'asc' ? cmp : -cmp;
+    });
+  }, [filteredTasks, sortField, sortDirection]);
+
   // 按责任人统计本周工作量和本周实际工作量
   const assigneeStats = useMemo(() => {
     const statsMap = new Map<string, { planned: number; actual: number }>();
@@ -229,7 +259,14 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
         <Table striped highlightOnHover style={{ minWidth: 1680 }}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th style={{ width: 100 }}>项目</Table.Th>
+              <Table.Th style={{ width: 100 }}>
+                <Group gap={4} wrap="nowrap">
+                  项目
+                  <ActionIcon size="xs" variant={sortField === 'project' ? 'filled' : 'subtle'} onClick={() => handleSort('project')}>
+                    {sortField === 'project' && sortDirection === 'desc' ? '▼' : '▲'}
+                  </ActionIcon>
+                </Group>
+              </Table.Th>
               <Table.Th style={{ width: 190 }}>US/DTS</Table.Th>
               <Table.Th style={{ width: 300 }}>任务详情</Table.Th>
               <Table.Th style={{ width: 90 }}>进度</Table.Th>
@@ -239,20 +276,27 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
               <Table.Th style={{ width: 90 }}>本周实际</Table.Th>
               <Table.Th style={{ width: 170 }}>计划时间</Table.Th>
               <Table.Th style={{ width: 170 }}>实际时间</Table.Th>
-              <Table.Th style={{ width: 90 }}>责任人</Table.Th>
+              <Table.Th style={{ width: 90 }}>
+                <Group gap={4} wrap="nowrap">
+                  责任人
+                  <ActionIcon size="xs" variant={sortField === 'assignee' ? 'filled' : 'subtle'} onClick={() => handleSort('assignee')}>
+                    {sortField === 'assignee' && sortDirection === 'desc' ? '▼' : '▲'}
+                  </ActionIcon>
+                </Group>
+              </Table.Th>
               <Table.Th style={{ width: 110 }}>备注</Table.Th>
               <Table.Th style={{ width: 100 }}>操作</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {filteredTasks.length === 0 ? (
+            {sortedTasks.length === 0 ? (
               <Table.Tr>
                 <Table.Td colSpan={13}>
                   <Text c="dimmed" ta="center">暂无数据</Text>
                 </Table.Td>
               </Table.Tr>
             ) : (
-              filteredTasks.map((task) => (
+              sortedTasks.map((task) => (
                 <Table.Tr key={task.id}>
                   <Table.Td style={{ width: 100 }}>
                     <Tooltip

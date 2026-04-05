@@ -75,6 +75,7 @@ export interface WeeklySummary {
   totalEstimatedWorkload: number;
   totalActualWorkload: number;
   totalWeeklyWorkload: number;
+  totalPlannedWeeklyWorkload: number;
   completedTasks: number;
   inProgressTasks: number;
   notStartedTasks: number;

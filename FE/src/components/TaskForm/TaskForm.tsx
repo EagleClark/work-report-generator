@@ -116,11 +116,21 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
 
     // 编辑模式下的额外验证
     if (isEdit) {
-      // 进度100%时，必须填入实际开始和结束时间
-      if (progress === 100) {
+      // 进度不为0时，实际开始时间、实际工作量、本周工作量必填
+      if (progress > 0) {
         if (!actualStartDate) {
-          newErrors.actualStartDate = '进度100%时必须填写实际开始时间';
+          newErrors.actualStartDate = '进度不为0时必须填写实际开始时间';
         }
+        if (!actualWorkload || actualWorkload <= 0) {
+          newErrors.actualWorkload = '进度不为0时必须填写实际工作量';
+        }
+        if (!weeklyWorkload || weeklyWorkload <= 0) {
+          newErrors.weeklyWorkload = '进度不为0时必须填写本周工作量';
+        }
+      }
+
+      // 进度100%时，必须填入实际结束时间
+      if (progress === 100) {
         if (!actualEndDate) {
           newErrors.actualEndDate = '进度100%时必须填写实际结束时间';
         }
@@ -359,6 +369,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
               onChange={(val) => { setActualWorkload(Number(val) || 0); clearError('actualWorkload'); clearError('weeklyWorkload'); }}
               min={0}
               error={errors.actualWorkload}
+              description={progress > 0 ? '进度不为0时必填' : ''}
             />
             <NumberInput
               label="本周工作量"
@@ -367,6 +378,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
               onChange={(val) => { setWeeklyWorkload(Number(val) || 0); clearError('weeklyWorkload'); }}
               min={0}
               error={errors.weeklyWorkload}
+              description={progress > 0 ? '进度不为0时必填' : ''}
             />
           </SimpleGrid>
         )}
@@ -380,7 +392,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
               value={actualStartDate}
               onChange={(e) => { setActualStartDate(e.target.value); clearError('actualStartDate'); }}
               error={errors.actualStartDate}
-              description={progress === 100 ? '进度100%时必填' : ''}
+              description={progress > 0 ? '进度不为0时必填' : ''}
             />
             <TextInput
               label="实际结束时间"

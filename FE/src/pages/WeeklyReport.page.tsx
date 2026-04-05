@@ -1,29 +1,41 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Container, Title, Text, Table, Group, Badge,
-  SimpleGrid, Paper, RingProgress, ScrollArea, Stack, Box, ThemeIcon, Tooltip,
-  Progress
+  SimpleGrid, Paper, ScrollArea, Stack, Box, ThemeIcon, Tooltip,
+  Divider, ActionIcon
 } from '@mantine/core';
 import { taskApi } from '../services/task.api';
 import type { WeeklySummary, Task } from '../types/task';
-import { useWeek, getWeekDateRange } from '../context/WeekContext';
+import { useWeek } from '../context/WeekContext';
 
-// 项目统计项接口
-interface ProjectUsDtsStats {
-  project: string;
-  dts: { planned: number; completed: number; inProgress: number };
-  us: { planned: number; completed: number; inProgress: number };
+// 任务分类统计接口
+interface CategoryStats {
+  planned: number;
+  completed: number;
+  inProgress: number;
+  notStarted: number;
 }
 
-// 人员工作量统计接口
-interface AssigneeStats {
+// 项目统计接口
+interface ProjectStats {
+  project: string;
+  us: CategoryStats;
+  dts: CategoryStats;
+  other: CategoryStats;
+}
+
+// 人员-项目统计接口
+interface AssigneeProjectStats {
   assignee: string;
   taskCount: number;
-  estimatedWorkload: number;
-  actualWorkload: number;
   weeklyWorkload: number;
   plannedWeeklyWorkload: number;
-  completionRate: number;
+  projects: {
+    project: string;
+    us: CategoryStats;
+    dts: CategoryStats;
+    other: CategoryStats;
+  }[];
 }
 
 // 判断是否为 DTS (以 DTS- 或 DTS 开头)
@@ -39,87 +51,148 @@ function isUs(usDts: string | undefined): boolean {
 }
 
 // 获取任务状态
-function getTaskStatus(progress: number): 'completed' | 'inProgress' | 'planned' {
+function getTaskStatus(progress: number): 'completed' | 'inProgress' | 'notStarted' {
   if (progress >= 100) return 'completed';
   if (progress > 0) return 'inProgress';
-  return 'planned';
+  return 'notStarted';
 }
 
-// 按项目分组统计 US/DTS
-function calculateProjectStats(tasks: Task[]): ProjectUsDtsStats[] {
-  const projectMap = new Map<string, ProjectUsDtsStats>();
+// 创建空的分类统计
+function createEmptyCategoryStats(): CategoryStats {
+  return { planned: 0, completed: 0, inProgress: 0, notStarted: 0 };
+}
+
+// 按项目分组统计
+function calculateProjectStats(tasks: Task[]): ProjectStats[] {
+  const projectMap = new Map<string, ProjectStats>();
 
   tasks.forEach(task => {
     const project = task.project;
+    const status = getTaskStatus(task.progress);
+    const category = isDts(task.usDts) ? 'dts' : isUs(task.usDts) ? 'us' : 'other';
+
     if (!projectMap.has(project)) {
       projectMap.set(project, {
         project,
-        dts: { planned: 0, completed: 0, inProgress: 0 },
-        us: { planned: 0, completed: 0, inProgress: 0 },
+        us: createEmptyCategoryStats(),
+        dts: createEmptyCategoryStats(),
+        other: createEmptyCategoryStats(),
       });
     }
 
     const stats = projectMap.get(project)!;
-    const status = getTaskStatus(task.progress);
-
-    if (isDts(task.usDts)) {
-      stats.dts.planned++;
-      if (status === 'completed') stats.dts.completed++;
-      else if (status === 'inProgress') stats.dts.inProgress++;
-    } else if (isUs(task.usDts)) {
-      stats.us.planned++;
-      if (status === 'completed') stats.us.completed++;
-      else if (status === 'inProgress') stats.us.inProgress++;
-    }
+    stats[category].planned++;
+    if (status === 'completed') stats[category].completed++;
+    else if (status === 'inProgress') stats[category].inProgress++;
+    else stats[category].notStarted++;
   });
 
-  // 过滤掉没有 DTS 或 US 数据的项目，并按项目名排序
   return Array.from(projectMap.values())
-    .filter(s => s.dts.planned > 0 || s.us.planned > 0)
+    .filter(s => s.us.planned > 0 || s.dts.planned > 0 || s.other.planned > 0)
     .sort((a, b) => a.project.localeCompare(b.project));
 }
 
-// 按负责人分组统计工作量
-function calculateAssigneeStats(tasks: Task[]): AssigneeStats[] {
-  const assigneeMap = new Map<string, AssigneeStats>();
+// 按人员-项目分组统计
+function calculateAssigneeProjectStats(tasks: Task[]): AssigneeProjectStats[] {
+  const assigneeMap = new Map<string, AssigneeProjectStats>();
 
   tasks.forEach(task => {
     const assignee = task.assignee || '未分配';
+    const project = task.project;
+    const status = getTaskStatus(task.progress);
+    const category = isDts(task.usDts) ? 'dts' : isUs(task.usDts) ? 'us' : 'other';
+
     if (!assigneeMap.has(assignee)) {
       assigneeMap.set(assignee, {
         assignee,
         taskCount: 0,
-        estimatedWorkload: 0,
-        actualWorkload: 0,
         weeklyWorkload: 0,
         plannedWeeklyWorkload: 0,
-        completionRate: 0,
+        projects: [],
       });
     }
 
-    const stats = assigneeMap.get(assignee)!;
-    stats.taskCount++;
-    stats.estimatedWorkload += task.estimatedWorkload || 0;
-    stats.actualWorkload += task.actualWorkload || 0;
-    stats.weeklyWorkload += task.weeklyWorkload || 0;
-    stats.plannedWeeklyWorkload += task.plannedWeeklyWorkload || 0;
+    const assigneeStats = assigneeMap.get(assignee)!;
+    assigneeStats.taskCount++;
+    assigneeStats.weeklyWorkload += task.weeklyWorkload || 0;
+    assigneeStats.plannedWeeklyWorkload += task.plannedWeeklyWorkload || 0;
+
+    // 查找或创建项目统计
+    let projectStats = assigneeStats.projects.find(p => p.project === project);
+    if (!projectStats) {
+      projectStats = {
+        project,
+        us: createEmptyCategoryStats(),
+        dts: createEmptyCategoryStats(),
+        other: createEmptyCategoryStats(),
+      };
+      assigneeStats.projects.push(projectStats);
+    }
+
+    // 更新分类统计
+    projectStats[category].planned++;
+    if (status === 'completed') projectStats[category].completed++;
+    else if (status === 'inProgress') projectStats[category].inProgress++;
+    else projectStats[category].notStarted++;
   });
 
-  // 计算完成率
+  // 按项目名排序每个人员的项目列表
   return Array.from(assigneeMap.values())
     .map(stats => ({
       ...stats,
-      completionRate: stats.estimatedWorkload > 0
-        ? Math.round((stats.actualWorkload / stats.estimatedWorkload) * 100)
-        : 0,
+      projects: stats.projects.sort((a, b) => a.project.localeCompare(b.project)),
     }))
     .sort((a, b) => b.weeklyWorkload - a.weeklyWorkload);
 }
+
+// 状态颜色配置
+const STATUS_COLORS = {
+  planned: 'gray',
+  completed: 'green',
+  inProgress: 'blue',
+  notStarted: 'cyan',
+} as const;
+
+// 分类颜色配置
+const CATEGORY_COLORS = {
+  us: 'violet',
+  dts: 'orange',
+  other: 'teal',
+} as const;
 
 export function WeeklyReportPage() {
   const { year, weekNumber } = useWeek();
   const [summary, setSummary] = useState<WeeklySummary | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // 排序状态
+  type SortField = 'project' | 'assignee' | null;
+  type SortDirection = 'asc' | 'desc';
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // 排序切换
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // 排序后的任务列表
+  const sortedTasks = useMemo(() => {
+    if (!summary?.tasks) return [];
+    if (!sortField) return summary.tasks;
+
+    return [...summary.tasks].sort((a, b) => {
+      const aValue = sortField === 'project' ? a.project : (a.assignee || '未分配');
+      const bValue = sortField === 'project' ? b.project : (b.assignee || '未分配');
+      const cmp = aValue.localeCompare(bValue, 'zh-CN');
+      return sortDirection === 'asc' ? cmp : -cmp;
+    });
+  }, [summary?.tasks, sortField, sortDirection]);
 
   // 计算项目维度统计
   const projectStats = useMemo(() => {
@@ -127,19 +200,17 @@ export function WeeklyReportPage() {
     return calculateProjectStats(summary.tasks);
   }, [summary?.tasks]);
 
-  // 计算人员工作量统计
-  const assigneeStats = useMemo(() => {
+  // 计算人员-项目统计
+  const assigneeProjectStats = useMemo(() => {
     if (!summary?.tasks) return [];
-    return calculateAssigneeStats(summary.tasks);
+    return calculateAssigneeProjectStats(summary.tasks);
   }, [summary?.tasks]);
 
-  // 计算团队总体完成率
-  const teamCompletionRate = useMemo(() => {
-    if (!summary) return 0;
-    return summary.totalEstimatedWorkload > 0
-      ? Math.round((summary.totalActualWorkload / summary.totalEstimatedWorkload) * 100)
-      : 0;
-  }, [summary]);
+  // 计算人员数量
+  const assigneeCount = useMemo(() => {
+    if (!assigneeProjectStats.length) return 0;
+    return assigneeProjectStats.length;
+  }, [assigneeProjectStats]);
 
   const fetchSummary = async () => {
     setLoading(true);
@@ -170,7 +241,7 @@ export function WeeklyReportPage() {
   // 渲染US/DTS，支持链接
   const renderUsDts = (task: Task) => {
     if (!task.usDts) {
-      return <Text c="dimmed">NA</Text>;
+      return <Text c="dimmed">-</Text>;
     }
     if (task.usDtsLink && task.usDtsLink.match(/^https?:\/\/.+/)) {
       return (
@@ -189,6 +260,101 @@ export function WeeklyReportPage() {
     return <Text>{task.usDts}</Text>;
   };
 
+  // 渲染分类统计徽章（项目统计用）
+  const renderCategoryBadges = (
+    label: string,
+    stats: CategoryStats,
+    color: string
+  ) => {
+    if (stats.planned === 0) return null;
+
+    return (
+      <Group gap="xs" align="center" wrap="nowrap">
+        <Badge size="lg" variant="filled" color={color} radius="sm" style={{ minWidth: 50 }}>
+          {label}
+        </Badge>
+        <Group gap={4} wrap="nowrap">
+          <Badge size="sm" variant="filled" color={STATUS_COLORS.planned}>
+            计划 {stats.planned}
+          </Badge>
+          <Badge size="sm" variant="filled" color={STATUS_COLORS.completed}>
+            完成 {stats.completed}
+          </Badge>
+          <Badge size="sm" variant="filled" color={STATUS_COLORS.inProgress}>
+            进行中 {stats.inProgress}
+          </Badge>
+          <Badge size="sm" variant="filled" color={STATUS_COLORS.notStarted}>
+            未开始 {stats.notStarted}
+          </Badge>
+        </Group>
+      </Group>
+    );
+  };
+
+  // 渲染单个项目的所有分类统计（一行显示）
+  const renderProjectInlineStats = (projectStats: { project: string; us: CategoryStats; dts: CategoryStats; other: CategoryStats }) => {
+    const hasUs = projectStats.us.planned > 0;
+    const hasDts = projectStats.dts.planned > 0;
+    const hasOther = projectStats.other.planned > 0;
+
+    if (!hasUs && !hasDts && !hasOther) return null;
+
+    return (
+      <Group gap="md" align="flex-start" wrap="wrap">
+        <Text size="xs" fw={600} style={{ width: 120, flexShrink: 0, wordBreak: 'break-word' }}>{projectStats.project}</Text>
+        <Group gap="md" align="center" wrap="wrap">
+          {hasUs && (
+            <Group gap={3} align="center">
+              <Badge size="xs" variant="filled" color={CATEGORY_COLORS.us} radius="sm">US</Badge>
+              <Group gap={2}>
+                <Badge size="xs" variant="outline" color={STATUS_COLORS.planned}>{projectStats.us.planned}</Badge>
+                <Badge size="xs" variant="outline" color={STATUS_COLORS.completed}>{projectStats.us.completed}</Badge>
+                <Badge size="xs" variant="outline" color={STATUS_COLORS.inProgress}>{projectStats.us.inProgress}</Badge>
+                <Badge size="xs" variant="outline" color={STATUS_COLORS.notStarted}>{projectStats.us.notStarted}</Badge>
+              </Group>
+            </Group>
+          )}
+          {hasDts && (
+            <Group gap={3} align="center">
+              <Badge size="xs" variant="filled" color={CATEGORY_COLORS.dts} radius="sm">DTS</Badge>
+              <Group gap={2}>
+                <Badge size="xs" variant="outline" color={STATUS_COLORS.planned}>{projectStats.dts.planned}</Badge>
+                <Badge size="xs" variant="outline" color={STATUS_COLORS.completed}>{projectStats.dts.completed}</Badge>
+                <Badge size="xs" variant="outline" color={STATUS_COLORS.inProgress}>{projectStats.dts.inProgress}</Badge>
+                <Badge size="xs" variant="outline" color={STATUS_COLORS.notStarted}>{projectStats.dts.notStarted}</Badge>
+              </Group>
+            </Group>
+          )}
+          {hasOther && (
+            <Group gap={3} align="center">
+              <Badge size="xs" variant="filled" color={CATEGORY_COLORS.other} radius="sm">其它</Badge>
+              <Group gap={2}>
+                <Badge size="xs" variant="outline" color={STATUS_COLORS.planned}>{projectStats.other.planned}</Badge>
+                <Badge size="xs" variant="outline" color={STATUS_COLORS.completed}>{projectStats.other.completed}</Badge>
+                <Badge size="xs" variant="outline" color={STATUS_COLORS.inProgress}>{projectStats.other.inProgress}</Badge>
+                <Badge size="xs" variant="outline" color={STATUS_COLORS.notStarted}>{projectStats.other.notStarted}</Badge>
+              </Group>
+            </Group>
+          )}
+        </Group>
+      </Group>
+    );
+  };
+
+  // 格式化数字，最多保留三位小数
+  const formatNumber = (num: number): string => {
+    const rounded = Math.round(num * 1000) / 1000;
+    return rounded.toString();
+  };
+
+  // 计算本周工作量偏差
+  const workloadDeviation = summary ? summary.totalWeeklyWorkload - (summary.totalPlannedWeeklyWorkload || 0) : 0;
+  const getDeviationColor = (deviation: number) => {
+    if (deviation > 0) return 'red';
+    if (deviation < 0) return 'gray';
+    return 'green';
+  };
+
   return (
     <Container size="xl" py="xl" style={{ minWidth: 1800 }}>
       <Title order={1} mb="xs">周报汇总</Title>
@@ -196,50 +362,37 @@ export function WeeklyReportPage() {
 
       {summary && (
         <>
-          <SimpleGrid cols={{ base: 1, sm: 4 }} mb="lg">
-            <Paper p="md" withBorder>
-              <Text size="sm" c="dimmed">任务总数</Text>
-              <Text size="xl" fw={700}>{summary.totalTasks}</Text>
-            </Paper>
-            <Paper p="md" withBorder>
-              <Text size="sm" c="dimmed">预计工作量</Text>
-              <Text size="xl" fw={700}>{summary.totalEstimatedWorkload} 人天</Text>
-            </Paper>
-            <Paper p="md" withBorder>
-              <Text size="sm" c="dimmed">实际工作量</Text>
-              <Text size="xl" fw={700}>{summary.totalActualWorkload} 人天</Text>
-            </Paper>
-            <Paper p="md" withBorder>
-              <Text size="sm" c="dimmed">本周工作量</Text>
-              <Text size="xl" fw={700}>{summary.totalWeeklyWorkload} 人天</Text>
-            </Paper>
-          </SimpleGrid>
-
+          {/* 顶部统计卡片 */}
           <SimpleGrid cols={{ base: 1, sm: 3 }} mb="lg">
-            <Paper p="md" withBorder>
-              <Group justify="center">
-                <RingProgress
-                  sections={[
-                    { value: summary.totalTasks > 0 ? (summary.completedTasks / summary.totalTasks) * 100 : 0, color: 'green' },
-                    { value: summary.totalTasks > 0 ? (summary.inProgressTasks / summary.totalTasks) * 100 : 0, color: 'yellow' },
-                    { value: summary.totalTasks > 0 ? (summary.notStartedTasks / summary.totalTasks) * 100 : 0, color: 'gray' },
-                  ]}
-                  size={100}
-                  thickness={10}
-                />
+            <Paper p="md" withBorder radius="md">
+              <Text size="sm" c="dimmed">任务总数</Text>
+              <Text fw={700} style={{ fontSize: 24 }}>{summary.totalTasks}</Text>
+            </Paper>
+            <Paper p="md" withBorder radius="md">
+              <Text size="sm" c="dimmed">人员投入</Text>
+              <Text fw={700} style={{ fontSize: 24 }}>{assigneeCount} 人</Text>
+            </Paper>
+            <Paper p="md" withBorder radius="md">
+              <Text size="sm" c="dimmed">本周工作量偏差</Text>
+              <Group align="baseline" gap={8}>
+                <Text
+                  fw={700}
+                  c={getDeviationColor(workloadDeviation)}
+                  style={{ fontSize: 24 }}
+                >
+                  {workloadDeviation > 0 ? '+' : ''}{formatNumber(workloadDeviation)} 人天
+                </Text>
               </Group>
-              <Text ta="center" mt="sm" size="sm">
-                <Text component="span" c="green" fw={700}>{summary.completedTasks}</Text> 已完成 / 
-                <Text component="span" c="yellow" fw={700}> {summary.inProgressTasks}</Text> 进行中 / 
-                <Text component="span" c="gray" fw={700}> {summary.notStartedTasks}</Text> 未开始
+              <Text size="xs" c="dimmed" mt={4}>
+                实际 {formatNumber(summary.totalWeeklyWorkload)} - 计划 {formatNumber(summary.totalPlannedWeeklyWorkload || 0)}
               </Text>
             </Paper>
           </SimpleGrid>
 
-          {/* 项目维度 DTS/US 统计 */}
+          {/* 项目维度统计 */}
           {projectStats.length > 0 && (
             <Box mb="lg">
-              <Text size="lg" fw={500} mb="md">项目 DTS/US 统计</Text>
+              <Text size="lg" fw={500} mb="md">项目任务统计</Text>
               <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }}>
                 {projectStats.map((stat) => (
                   <Paper
@@ -251,50 +404,11 @@ export function WeeklyReportPage() {
                       background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%)',
                     }}
                   >
-                    <Group justify="space-between" mb="sm">
-                      <Text fw={600} size="md">{stat.project}</Text>
-                    </Group>
+                    <Text fw={600} size="md" mb="sm">{stat.project}</Text>
                     <Stack gap="xs">
-                      {/* DTS 统计 */}
-                      {stat.dts.planned > 0 && (
-                        <Group gap="xs" align="center">
-                          <ThemeIcon size="sm" variant="light" color="orange">
-                            D
-                          </ThemeIcon>
-                          <Text size="sm" c="dimmed">DTS:</Text>
-                          <Group gap={4}>
-                            <Badge size="sm" variant="filled" color="gray">
-                              计划 {stat.dts.planned}
-                            </Badge>
-                            <Badge size="sm" variant="filled" color="green">
-                              完成 {stat.dts.completed}
-                            </Badge>
-                            <Badge size="sm" variant="filled" color="blue">
-                              进行中 {stat.dts.inProgress}
-                            </Badge>
-                          </Group>
-                        </Group>
-                      )}
-                      {/* US 统计 */}
-                      {stat.us.planned > 0 && (
-                        <Group gap="xs" align="center">
-                          <ThemeIcon size="sm" variant="light" color="cyan">
-                            U
-                          </ThemeIcon>
-                          <Text size="sm" c="dimmed">US:</Text>
-                          <Group gap={4}>
-                            <Badge size="sm" variant="filled" color="gray">
-                              计划 {stat.us.planned}
-                            </Badge>
-                            <Badge size="sm" variant="filled" color="green">
-                              完成 {stat.us.completed}
-                            </Badge>
-                            <Badge size="sm" variant="filled" color="blue">
-                              进行中 {stat.us.inProgress}
-                            </Badge>
-                          </Group>
-                        </Group>
-                      )}
+                      {renderCategoryBadges('US', stat.us, CATEGORY_COLORS.us)}
+                      {renderCategoryBadges('DTS', stat.dts, CATEGORY_COLORS.dts)}
+                      {renderCategoryBadges('其它', stat.other, CATEGORY_COLORS.other)}
                     </Stack>
                   </Paper>
                 ))}
@@ -302,13 +416,14 @@ export function WeeklyReportPage() {
             </Box>
           )}
 
-          {/* 人员工作量统计 */}
-          {assigneeStats.length > 0 && (
+          {/* 人员工作量统计 - 卡片形式，一行最多3个 */}
+          {assigneeProjectStats.length > 0 && (
             <Box mb="lg">
               <Text size="lg" fw={500} mb="md">人员工作量统计</Text>
-              <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }}>
-                {assigneeStats.map((stat) => {
-                  const rateColor = stat.completionRate >= 100 ? 'green' : stat.completionRate >= 80 ? 'yellow' : 'red';
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }}>
+                {assigneeProjectStats.map((stat) => {
+                  const deviation = stat.weeklyWorkload - stat.plannedWeeklyWorkload;
+                  const deviationColor = deviation > 0 ? 'red' : deviation < 0 ? 'gray' : 'green';
                   return (
                     <Paper
                       key={stat.assignee}
@@ -320,35 +435,31 @@ export function WeeklyReportPage() {
                         <Text fw={600} size="md">{stat.assignee}</Text>
                         <Badge size="sm" variant="light">{stat.taskCount} 个任务</Badge>
                       </Group>
+
                       <Stack gap={4}>
                         <Group justify="space-between">
-                          <Text size="sm" c="dimmed">预计</Text>
-                          <Text size="sm" fw={500}>{stat.estimatedWorkload} 人天</Text>
-                        </Group>
-                        <Group justify="space-between">
-                          <Text size="sm" c="dimmed">实际</Text>
-                          <Text size="sm" fw={500}>{stat.actualWorkload} 人天</Text>
-                        </Group>
-                        <Group justify="space-between">
                           <Text size="sm" c="dimmed">本周计划</Text>
-                          <Text size="sm" fw={500} c="orange">{stat.plannedWeeklyWorkload} 人天</Text>
+                          <Text size="sm" fw={500} c="orange">{formatNumber(stat.plannedWeeklyWorkload)} 人天</Text>
                         </Group>
                         <Group justify="space-between">
                           <Text size="sm" c="dimmed">本周实际</Text>
-                          <Text size="sm" fw={500} c="blue">{stat.weeklyWorkload} 人天</Text>
+                          <Text size="sm" fw={500} c="blue">{formatNumber(stat.weeklyWorkload)} 人天</Text>
                         </Group>
-                        <Box mt="xs">
-                          <Group justify="space-between" mb={4}>
-                            <Text size="xs" c="dimmed">完成率</Text>
-                            <Text size="xs" fw={500} c={rateColor}>{stat.completionRate}%</Text>
-                          </Group>
-                          <Progress
-                            value={Math.min(stat.completionRate, 100)}
-                            color={rateColor}
-                            size="sm"
-                            radius="xl"
-                          />
-                        </Box>
+                        <Group justify="space-between">
+                          <Text size="sm" c="dimmed">偏差</Text>
+                          <Text size="sm" fw={700} c={deviationColor}>
+                            {deviation > 0 ? '+' : ''}{formatNumber(deviation)} 人天
+                          </Text>
+                        </Group>
+
+                        <Divider my="xs" />
+
+                        {/* 按项目展示任务统计 - 一行显示 */}
+                        {stat.projects.map((projectStats) => (
+                          <Box key={projectStats.project}>
+                            {renderProjectInlineStats(projectStats)}
+                          </Box>
+                        ))}
                       </Stack>
                     </Paper>
                   );
@@ -357,107 +468,21 @@ export function WeeklyReportPage() {
             </Box>
           )}
 
-          {/* 工作量对比 */}
-          {assigneeStats.length > 0 && (
-            <Box mb="lg">
-              <Text size="lg" fw={500} mb="md">工作量对比</Text>
-              <Paper p="md" withBorder radius="md">
-                <Stack gap="md">
-                  {assigneeStats.map((stat) => {
-                    const maxWorkload = Math.max(stat.estimatedWorkload, stat.actualWorkload, 1);
-                    const rateColor = stat.completionRate >= 100 ? 'green' : stat.completionRate >= 80 ? 'yellow' : 'red';
-                    return (
-                      <Box key={stat.assignee}>
-                        <Group justify="space-between" mb={4}>
-                          <Text size="sm" fw={500} style={{ width: 80 }}>{stat.assignee}</Text>
-                          <Group gap="lg">
-                            <Text size="xs" c="dimmed">
-                              预计 <Text component="span" fw={500}>{stat.estimatedWorkload}</Text> 天
-                            </Text>
-                            <Text size="xs" c="dimmed">
-                              实际 <Text component="span" fw={500}>{stat.actualWorkload}</Text> 天
-                            </Text>
-                            <Text size="xs" fw={500} c={rateColor}>
-                              {stat.completionRate}%
-                              {stat.completionRate > 100 && ' ⚠️'}
-                            </Text>
-                          </Group>
-                        </Group>
-                        <Group align="center" gap="xs">
-                          <Progress
-                            value={(stat.estimatedWorkload / maxWorkload) * 100}
-                            color="gray"
-                            size="sm"
-                            style={{ flex: 1 }}
-                          />
-                          <Progress
-                            value={(stat.actualWorkload / maxWorkload) * 100}
-                            color={rateColor}
-                            size="sm"
-                            style={{ flex: 1 }}
-                          />
-                        </Group>
-                      </Box>
-                    );
-                  })}
-                </Stack>
-              </Paper>
-            </Box>
-          )}
-
-          {/* 团队整体统计 */}
-          {summary.totalTasks > 0 && (
-            <Box mb="lg">
-              <Text size="lg" fw={500} mb="md">团队工作量总览</Text>
-              <Paper p="md" withBorder radius="md">
-                <SimpleGrid cols={{ base: 2, sm: 4 }}>
-                  <Box>
-                    <Text size="sm" c="dimmed">总预计工作量</Text>
-                    <Text size="lg" fw={700}>{summary.totalEstimatedWorkload} 人天</Text>
-                  </Box>
-                  <Box>
-                    <Text size="sm" c="dimmed">总实际工作量</Text>
-                    <Text size="lg" fw={700}>{summary.totalActualWorkload} 人天</Text>
-                  </Box>
-                  <Box>
-                    <Text size="sm" c="dimmed">本周投入</Text>
-                    <Text size="lg" fw={700} c="blue">{summary.totalWeeklyWorkload} 人天</Text>
-                  </Box>
-                  <Box>
-                    <Text size="sm" c="dimmed">团队完成率</Text>
-                    <Group gap="xs">
-                      <Text size="lg" fw={700} c={teamCompletionRate >= 100 ? 'green' : teamCompletionRate >= 80 ? 'yellow' : 'red'}>
-                        {teamCompletionRate}%
-                      </Text>
-                    </Group>
-                  </Box>
-                </SimpleGrid>
-                <Box mt="md">
-                  <Progress
-                    value={Math.min(teamCompletionRate, 100)}
-                    color={teamCompletionRate >= 100 ? 'green' : teamCompletionRate >= 80 ? 'yellow' : 'red'}
-                    size="lg"
-                    radius="xl"
-                  />
-                </Box>
-                {assigneeStats.length > 0 && (
-                  <Text size="sm" c="dimmed" mt="sm">
-                    人均本周投入：{(summary.totalWeeklyWorkload / assigneeStats.length).toFixed(1)} 人天
-                  </Text>
-                )}
-              </Paper>
-            </Box>
-          )}
-
           <Group mb="sm">
             <Text size="lg" fw={500}>任务明细</Text>
-            <Text size="sm" c="dimmed">工作量单位：人天</Text>
           </Group>
           <ScrollArea>
             <Table striped highlightOnHover style={{ minWidth: 1680 }}>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th style={{ width: 100 }}>项目</Table.Th>
+                    <Table.Th style={{ width: 100 }}>
+                      <Group gap={4} wrap="nowrap">
+                        项目
+                        <ActionIcon size="xs" variant={sortField === 'project' ? 'filled' : 'subtle'} onClick={() => handleSort('project')}>
+                          {sortField === 'project' && sortDirection === 'desc' ? '▼' : '▲'}
+                        </ActionIcon>
+                      </Group>
+                    </Table.Th>
                     <Table.Th style={{ width: 190 }}>US/DTS</Table.Th>
                     <Table.Th style={{ width: 300 }}>任务详情</Table.Th>
                     <Table.Th style={{ width: 90 }}>进度</Table.Th>
@@ -467,19 +492,26 @@ export function WeeklyReportPage() {
                     <Table.Th style={{ width: 90 }}>本周实际</Table.Th>
                     <Table.Th style={{ width: 170 }}>计划时间</Table.Th>
                     <Table.Th style={{ width: 170 }}>实际时间</Table.Th>
-                    <Table.Th style={{ width: 90 }}>责任人</Table.Th>
+                    <Table.Th style={{ width: 90 }}>
+                      <Group gap={4} wrap="nowrap">
+                        责任人
+                        <ActionIcon size="xs" variant={sortField === 'assignee' ? 'filled' : 'subtle'} onClick={() => handleSort('assignee')}>
+                          {sortField === 'assignee' && sortDirection === 'desc' ? '▼' : '▲'}
+                        </ActionIcon>
+                      </Group>
+                    </Table.Th>
                     <Table.Th style={{ width: 110 }}>备注</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {summary.tasks.length === 0 ? (
+                  {sortedTasks.length === 0 ? (
                     <Table.Tr>
                       <Table.Td colSpan={12}>
                         <Text c="dimmed" ta="center">暂无数据</Text>
                       </Table.Td>
                     </Table.Tr>
                   ) : (
-                    summary.tasks.map((task) => (
+                    sortedTasks.map((task) => (
                       <Table.Tr key={task.id}>
                         <Table.Td style={{ width: 100 }}>
                           <Tooltip

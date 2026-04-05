@@ -53,9 +53,13 @@ export class TaskService {
   async update(id: number, updateDto: UpdateTaskDto, currentUser: User): Promise<Task> {
     const task = await this.findOne(id);
 
-    // 权限检查
-    if (currentUser.role === UserRole.USER && task.userId !== currentUser.id.toString()) {
-      throw new ForbiddenException('你只能修改自己的任务');
+    // 权限检查：普通用户只能修改自己的任务（检查 userId 或 assignee）
+    if (currentUser.role === UserRole.USER) {
+      const userIdMatch = task.userId && String(task.userId) === String(currentUser.id);
+      const assigneeMatch = task.assignee === currentUser.username;
+      if (!userIdMatch && !assigneeMatch) {
+        throw new ForbiddenException('你只能修改自己的任务');
+      }
     }
 
     Object.assign(task, updateDto);
@@ -65,9 +69,13 @@ export class TaskService {
   async remove(id: number, currentUser: User): Promise<void> {
     const task = await this.findOne(id);
 
-    // 权限检查
-    if (currentUser.role === UserRole.USER && task.userId !== currentUser.id.toString()) {
-      throw new ForbiddenException('你只能删除自己的任务');
+    // 权限检查：普通用户只能删除自己的任务（检查 userId 或 assignee）
+    if (currentUser.role === UserRole.USER) {
+      const userIdMatch = task.userId && String(task.userId) === String(currentUser.id);
+      const assigneeMatch = task.assignee === currentUser.username;
+      if (!userIdMatch && !assigneeMatch) {
+        throw new ForbiddenException('你只能删除自己的任务');
+      }
     }
 
     await this.taskRepository.remove(task);
@@ -84,6 +92,7 @@ export class TaskService {
       totalEstimatedWorkload: 0,
       totalActualWorkload: 0,
       totalWeeklyWorkload: 0,
+      totalPlannedWeeklyWorkload: 0,
       completedTasks: 0,
       inProgressTasks: 0,
       notStartedTasks: 0,
@@ -94,6 +103,7 @@ export class TaskService {
       summary.totalEstimatedWorkload += task.estimatedWorkload || 0;
       summary.totalActualWorkload += task.actualWorkload || 0;
       summary.totalWeeklyWorkload += task.weeklyWorkload || 0;
+      summary.totalPlannedWeeklyWorkload += task.plannedWeeklyWorkload || 0;
 
       if (task.progress === 100) {
         summary.completedTasks++;
@@ -196,7 +206,7 @@ export class TaskService {
         plannedEndDate: sourceTask.plannedEndDate,
         actualWorkload: sourceTask.actualWorkload,
         weeklyWorkload: 0, // 重置为 0
-        plannedWeeklyWorkload: sourceTask.plannedWeeklyWorkload, // 继承计划本周投入
+        plannedWeeklyWorkload: 0, // 重置为 0
         actualStartDate: sourceTask.actualStartDate, // 继承实际时间
         actualEndDate: sourceTask.actualEndDate,
         assignee: sourceTask.assignee,
