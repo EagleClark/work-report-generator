@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { AIAnalysisService } from '../services/ai-analysis.service';
 import { CreateAnalysisDto, QueryAnalysisDto } from '../dto/create-analysis.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -31,6 +32,25 @@ export class AIAnalysisController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   generate(@Body() dto: CreateAnalysisDto) {
     return this.aiAnalysisService.generateAnalysis(dto);
+  }
+
+  @Post('generate-stream')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async generateStream(@Body() dto: CreateAnalysisDto, @Res() res: Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    try {
+      await this.aiAnalysisService.generateAnalysisStream(dto, (chunk: string) => {
+        res.write(chunk);
+      });
+
+      res.end();
+    } catch (error) {
+      res.write(`生成失败: ${error.message}`);
+      res.end();
+    }
   }
 
   @Delete(':id')

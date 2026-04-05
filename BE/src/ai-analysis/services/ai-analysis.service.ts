@@ -97,4 +97,55 @@ export class AIAnalysisService {
     }
     await this.analysisRepository.remove(analysis);
   }
+
+  async generateAnalysisStream(dto: CreateAnalysisDto, onChunk: (chunk: string) => void): Promise<AIAnalysis> {
+    const { year, weekNumber, userPrompt } = dto;
+
+    // 删除已有分析
+    const existing = await this.findByYearAndWeek(year, weekNumber);
+    if (existing) {
+      await this.analysisRepository.remove(existing);
+    }
+
+    // 获取周报数据
+    const summaryData = await this.taskService.getWeeklySummary(year, weekNumber);
+
+    // 计算人员数量
+    const assigneeSet = new Set(
+      summaryData.tasks?.map((t: any) => t.assignee).filter(Boolean) || []
+    );
+    const assigneeCount = assigneeSet.size;
+
+    // 构建请求
+    const request = {
+      summaryData: {
+        ...summaryData,
+        year,
+        weekNumber,
+        assigneeCount,
+      },
+      userPrompt,
+    };
+
+    try {
+      // 调用 AI 服务流式生成
+      const response = await this.openaiProvider.analyzeStream(request, onChunk);
+
+      // 保存分析结果
+      const analysis = this.analysisRepository.create({
+        year,
+        weekNumber,
+        analysisContent: response.content,
+        userPrompt,
+        modelType: 'OPENAI',
+        modelName: process.env.AI_MODEL || 'gpt-4o-mini',
+        metadata: response.metadata,
+      });
+
+      return this.analysisRepository.save(analysis);
+    } catch (error) {
+      this.logger.error(`Failed to generate analysis stream: ${error.message}`);
+      throw error;
+    }
+  }
 }

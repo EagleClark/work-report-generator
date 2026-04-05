@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
-  Paper, Text, Stack, Group, Badge, Button, ScrollArea, ActionIcon, Alert, Box
+  Paper, Text, Stack, Group, Badge, Button, ScrollArea, ActionIcon, Alert, Box, Loader
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconRefresh, IconTrash, IconSparkles } from '@tabler/icons-react';
-import { aiAnalysisApi } from '../../services/ai-analysis.api';
 import type { AIAnalysis } from '../../types/ai-analysis';
 import { AIAnalysisModal } from '../AIAnalysisModal/AIAnalysisModal';
 import { useAuth } from '../../context/AuthContext';
@@ -18,17 +17,25 @@ interface AIAnalysisDisplayProps {
 export function AIAnalysisDisplay({ year, weekNumber }: AIAnalysisDisplayProps) {
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [streamContent, setStreamContent] = useState('');
   const [modalOpened, setModalOpened] = useState(false);
   const { user, hasRole } = useAuth();
 
-  // 是否为管理员（可触发生成和删除）
+  // 是否为管理员
   const isAdmin = hasRole([UserRole.ADMIN, UserRole.SUPER_ADMIN]);
 
   const fetchAnalysis = async () => {
     setLoading(true);
     try {
-      const data = await aiAnalysisApi.getCurrent(year, weekNumber);
-      setAnalysis(data);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/ai-analysis/current?year=${year}&weekNumber=${weekNumber}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAnalysis(data);
+      }
     } catch (error) {
       console.error('Failed to fetch analysis:', error);
     } finally {
@@ -36,11 +43,77 @@ export function AIAnalysisDisplay({ year, weekNumber }: AIAnalysisDisplayProps) 
     }
   };
 
+  // SSE 流式生成分析
+  const generateWithSSE = useCallback(async (userPrompt?: string) => {
+    setAnalyzing(true);
+    setStreamContent('');
+    setAnalysis(null);
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/ai-analysis/generate-stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          year,
+          weekNumber,
+          userPrompt: userPrompt || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('生成失败');
+      }
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('无法读取响应');
+      }
+
+      let fullContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        fullContent += chunk;
+        setStreamContent(fullContent);
+      }
+
+      // 完成后重新获取完整的分析数据
+      await fetchAnalysis();
+
+      notifications.show({
+        title: '生成成功',
+        message: 'AI 分析已完成',
+        color: 'green',
+      });
+    } catch (error: any) {
+      notifications.show({
+        title: '生成失败',
+        message: error.message || '请检查 AI 配置或稍后重试',
+        color: 'red',
+      });
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [year, weekNumber]);
+
   const handleDelete = async () => {
     if (!analysis) return;
 
     try {
-      await aiAnalysisApi.delete(analysis.id);
+      const token = localStorage.getItem('token');
+      await fetch(`/api/ai-analysis/${analysis.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
       notifications.show({
         title: '删除成功',
         message: '分析已删除',
@@ -60,6 +133,34 @@ export function AIAnalysisDisplay({ year, weekNumber }: AIAnalysisDisplayProps) 
     fetchAnalysis();
   }, [year, weekNumber]);
 
+  // 分析中状态
+  if (analyzing) {
+    return (
+      <Paper p="md" withBorder radius="md">
+        <Stack gap="md">
+          <Group gap="sm">
+            <Loader size="sm" color="violet" />
+            <Text size="lg" fw={500}>AI 智能分析中...</Text>
+          </Group>
+          {streamContent && (
+            <ScrollArea.Autosize mah={500}>
+              <Box
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: 1.7,
+                  fontSize: '14px',
+                  opacity: 0.8,
+                }}
+              >
+                {streamContent}
+              </Box>
+            </ScrollArea.Autosize>
+          )}
+        </Stack>
+      </Paper>
+    );
+  }
+
   if (loading) {
     return (
       <Paper p="md" withBorder radius="md">
@@ -69,7 +170,6 @@ export function AIAnalysisDisplay({ year, weekNumber }: AIAnalysisDisplayProps) 
   }
 
   if (!analysis) {
-    // 无分析时，只有管理员显示生成按钮
     if (!isAdmin) {
       return null;
     }
@@ -94,10 +194,7 @@ export function AIAnalysisDisplay({ year, weekNumber }: AIAnalysisDisplayProps) 
         <AIAnalysisModal
           opened={modalOpened}
           onClose={() => setModalOpened(false)}
-          onSuccess={fetchAnalysis}
-          year={year}
-          weekNumber={weekNumber}
-          hasExistingAnalysis={false}
+          onGenerate={generateWithSSE}
         />
       </>
     );
@@ -178,10 +275,7 @@ export function AIAnalysisDisplay({ year, weekNumber }: AIAnalysisDisplayProps) 
       <AIAnalysisModal
         opened={modalOpened}
         onClose={() => setModalOpened(false)}
-        onSuccess={fetchAnalysis}
-        year={year}
-        weekNumber={weekNumber}
-        hasExistingAnalysis={true}
+        onGenerate={generateWithSSE}
       />
     </>
   );
@@ -193,7 +287,6 @@ function formatMarkdown(text: string): React.ReactNode {
   const elements: React.ReactNode[] = [];
 
   lines.forEach((line, index) => {
-    // 标题
     if (line.startsWith('### ')) {
       elements.push(
         <Text key={index} fw={600} size="md" mt="md" mb="xs">
@@ -213,15 +306,13 @@ function formatMarkdown(text: string): React.ReactNode {
         </Text>
       );
     } else if (line.startsWith('- **') && line.endsWith('**')) {
-      // 加粗列表项
       const content = line.replace('- **', '').replace(/\*\*$/, '');
       elements.push(
         <Text key={index} component="div" size="sm" ml="sm">
-              {content}
+          {content}
         </Text>
       );
     } else if (line.startsWith('- ')) {
-      // 普通列表项
       const content = line.replace('- ', '');
       elements.push(
         <Text key={index} component="div" size="sm" ml="sm">
@@ -242,9 +333,7 @@ function formatMarkdown(text: string): React.ReactNode {
   return <>{elements}</>;
 }
 
-// 处理行内 Markdown
 function formatInlineMarkdown(text: string): React.ReactNode {
-  // 简单处理加粗
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
