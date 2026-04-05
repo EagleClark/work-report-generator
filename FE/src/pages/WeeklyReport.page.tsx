@@ -8,6 +8,7 @@ import { taskApi } from '../services/task.api';
 import type { WeeklySummary, Task } from '../types/task';
 import { useWeek } from '../context/WeekContext';
 import { AIAnalysisDisplay } from '../components/AIAnalysisDisplay/AIAnalysisDisplay';
+import { TaskAnalysis } from '../components/TaskAnalysis/TaskAnalysis';
 
 // 任务分类统计接口
 interface CategoryStats {
@@ -391,6 +392,11 @@ export function WeeklyReportPage() {
 
       {summary && (
         <>
+          {/* AI 智能分析 - 放在最前面 */}
+          <Box mb="lg">
+            <AIAnalysisDisplay year={year} weekNumber={weekNumber} />
+          </Box>
+
           {/* 顶部统计卡片 */}
           <SimpleGrid cols={{ base: 1, sm: 3 }} mb="lg">
             <Paper p="md" withBorder radius="md">
@@ -417,11 +423,6 @@ export function WeeklyReportPage() {
               </Text>
             </Paper>
           </SimpleGrid>
-
-          {/* AI 智能分析 */}
-          <Box mb="lg">
-            <AIAnalysisDisplay year={year} weekNumber={weekNumber} />
-          </Box>
 
           {/* 项目维度统计 */}
           {projectStats.length > 0 && (
@@ -610,6 +611,11 @@ export function WeeklyReportPage() {
               </SimpleGrid>
             </Box>
           )}
+
+          {/* 任务偏差分析 */}
+          <Box mb="lg">
+            <TaskAnalysis tasks={summary.tasks} />
+          </Box>
 
           <Group mb="sm">
             <Text size="lg" fw={500}>任务明细</Text>
