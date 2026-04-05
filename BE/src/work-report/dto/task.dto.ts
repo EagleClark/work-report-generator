@@ -43,6 +43,10 @@ export class CreateTaskDto {
   @IsNumber()
   weeklyWorkload?: number;
 
+  @IsNumber()
+  @Min(0)
+  plannedWeeklyWorkload: number;
+
   @IsOptional()
   @IsDateString()
   actualStartDate?: string;
@@ -110,6 +114,11 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsNumber()
   weeklyWorkload?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  plannedWeeklyWorkload?: number;
 
   @IsOptional()
   @IsDateString()

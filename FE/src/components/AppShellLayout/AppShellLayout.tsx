@@ -1,21 +1,25 @@
-import { AppShell, Group, Button, Title, ActionIcon, Menu, useMantineColorScheme, Avatar, Text, Box, Modal, PasswordInput, Stack } from '@mantine/core';
+import { AppShell, Group, Button, Title, ActionIcon, Menu, useMantineColorScheme, Avatar, Text, Box, Modal, PasswordInput, Stack, NumberInput, Badge } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { useAuth } from '../../context/AuthContext';
+import { useWeek, getWeekDateRange } from '../../context/WeekContext';
 import { UserRole } from '../../types/user';
 import { authApi } from '../../services/auth.api';
+import { HelpModal } from '../HelpModal/HelpModal';
 
 export function AppShellLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { setColorScheme, colorScheme } = useMantineColorScheme();
   const { user, logout, isAuthenticated, hasRole } = useAuth();
+  const { year, weekNumber, setYear, setWeekNumber } = useWeek();
   const [systemPreference, setSystemPreference] = useState<'light' | 'dark'>('light');
   const menuRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [passwordModalOpened, { open: openPasswordModal, close: closePasswordModal }] = useDisclosure(false);
+  const [helpModalOpened, { open: openHelpModal, close: closeHelpModal }] = useDisclosure(false);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -107,10 +111,37 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
       header={{ height: 60 }}
       padding="md"
     >
-      <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Title order={3}>周报系统</Title>
-          <Group>
+      {isAuthenticated && (
+        <AppShell.Header>
+          <Group h="100%" px="md" justify="space-between">
+            <Group gap="md">
+              <Title order={3}>周报系统</Title>
+              {/* 年份和周数选择器 */}
+              <Group gap="xs" align="center">
+                <NumberInput
+                  value={year}
+                  onChange={(val) => setYear(Number(val) || new Date().getFullYear())}
+                  min={2000}
+                  max={2100}
+                  style={{ width: 70 }}
+                  size="xs"
+                />
+                <Text size="sm">年第</Text>
+                <NumberInput
+                  value={weekNumber}
+                  onChange={(val) => setWeekNumber(Number(val) || 1)}
+                  min={1}
+                  max={53}
+                  style={{ width: 50 }}
+                  size="xs"
+                />
+                <Text size="sm">周</Text>
+                <Badge variant="filled" color="blue" size="md" fw={600}>
+                  {getWeekDateRange(year, weekNumber)}
+                </Badge>
+              </Group>
+            </Group>
+            <Group>
             {isAuthenticated && hasRole([UserRole.USER, UserRole.ADMIN, UserRole.SUPER_ADMIN]) && (
               <Button
                 variant={location.pathname === '/' ? 'filled' : 'subtle'}
@@ -167,6 +198,16 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
               </Button>
             )}
 
+            {/* 帮助按钮 */}
+            <ActionIcon
+              variant="subtle"
+              size="lg"
+              onClick={openHelpModal}
+              aria-label="帮助"
+            >
+              ❓
+            </ActionIcon>
+
             {/* 主题菜单 */}
             <Menu shadow="md" width={140} position="bottom-end" withArrow>
               <Menu.Target>
@@ -207,6 +248,7 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
           </Group>
         </Group>
       </AppShell.Header>
+      )}
 
       <AppShell.Main>
         {children}
@@ -238,6 +280,9 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
           </Group>
         </Stack>
       </Modal>
+
+      {/* 帮助弹窗 */}
+      <HelpModal opened={helpModalOpened} onClose={closeHelpModal} showMechanisms={true} />
     </AppShell>
   );
 }

@@ -10,6 +10,7 @@ export interface Task {
   plannedEndDate?: string;
   actualWorkload: number;
   weeklyWorkload: number;
+  plannedWeeklyWorkload: number;
   actualStartDate?: string;
   actualEndDate?: string;
   assignee?: string;
@@ -32,6 +33,7 @@ export interface CreateTaskDto {
   plannedEndDate?: string;
   actualWorkload?: number;
   weeklyWorkload?: number;
+  plannedWeeklyWorkload: number;
   actualStartDate?: string;
   actualEndDate?: string;
   assignee?: string;
@@ -52,6 +54,7 @@ export interface UpdateTaskDto {
   plannedEndDate?: string;
   actualWorkload?: number;
   weeklyWorkload?: number;
+  plannedWeeklyWorkload?: number;
   actualStartDate?: string;
   actualEndDate?: string;
   assignee?: string;
@@ -76,4 +79,23 @@ export interface WeeklySummary {
   inProgressTasks: number;
   notStartedTasks: number;
   tasks: Task[];
+}
+
+export enum CopyMode {
+  SELF = 'SELF',
+  ALL = 'ALL',
+  SPECIFIC_USER = 'SPECIFIC_USER',
+}
+
+export interface CopyTaskDto {
+  year: number;
+  weekNumber: number;
+  copyMode?: CopyMode;
+  userId?: number;
+}
+
+export interface CopyTaskResult {
+  copiedCount: number;
+  skippedCount: number;
+  skippedTasks: Array<{ task: string; reason: string }>;
 }

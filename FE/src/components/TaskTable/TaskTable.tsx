@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Table, Group, Button, NumberInput, Modal, Badge, Text, TextInput, ScrollArea, Tooltip } from '@mantine/core';
+import { Table, Group, Button, Modal, Badge, Text, ScrollArea, Tooltip, Select } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { taskApi } from '../../services/task.api';
 import { userApi } from '../../services/user.api';
@@ -7,7 +7,9 @@ import { projectApi, type Project } from '../../services/project.api';
 import type { Task, CreateTaskDto } from '../../types/task';
 import type { User } from '../../types/user';
 import { TaskForm } from '../TaskForm/TaskForm';
+import { CopyTaskModal } from '../CopyTaskModal/CopyTaskModal';
 import { useAuth } from '../../context/AuthContext';
+import { useWeek } from '../../context/WeekContext';
 import { UserRole } from '../../types/user';
 
 interface TaskTableProps {
@@ -19,14 +21,14 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [weekNumber, setWeekNumber] = useState<number | string>('');
-  const [projectFilter, setProjectFilter] = useState('');
-  const [assigneeFilter, setAssigneeFilter] = useState('');
+  const { year, weekNumber } = useWeek();
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
+  const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
+  const [copyModalOpened, { open: openCopyModal, close: closeCopyModal }] = useDisclosure(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { user, hasRole } = useAuth();
 
@@ -40,10 +42,7 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
   const fetchTasks = async () => {
     setLoading(true);
     try {
-      const query: Record<string, number> = { year };
-      if (weekNumber) {
-        query.weekNumber = Number(weekNumber);
-      }
+      const query: Record<string, number> = { year, weekNumber };
       const data = await taskApi.getAll(query);
       setTasks(data);
       onDataChange?.(data.length);
@@ -76,11 +75,7 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
     fetchTasks();
     fetchUsers();
     fetchProjects();
-  }, [refreshTrigger]);
-
-  const handleSearch = () => {
-    fetchTasks();
-  };
+  }, [refreshTrigger, year, weekNumber]);
 
   const handleCreate = async (dto: CreateTaskDto) => {
     await taskApi.create(dto);
@@ -122,17 +117,19 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
     openModal();
   };
 
-  const getProgressColor = (progress: number) => {
+  // 进度颜色：25%以下红，50%以下橙色，75%以下黄色，100%以下蓝色，100%绿色
+  const getProgressColor = (progress: number): string => {
     if (progress >= 100) return 'green';
+    if (progress >= 75) return 'blue';
     if (progress >= 50) return 'yellow';
-    if (progress > 0) return 'blue';
-    return 'gray';
+    if (progress >= 25) return 'orange';
+    return 'red';
   };
 
   // Filter tasks by project and assignee
   const filteredTasks = tasks.filter((task) => {
-    const matchProject = !projectFilter || task.project.toLowerCase().includes(projectFilter.toLowerCase());
-    const matchAssignee = !assigneeFilter || (task.assignee && task.assignee.toLowerCase().includes(assigneeFilter.toLowerCase()));
+    const matchProject = !projectFilter || task.project === projectFilter;
+    const matchAssignee = !assigneeFilter || task.assignee === assigneeFilter;
     return matchProject && matchAssignee;
   });
 
@@ -158,46 +155,42 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
     return <Text>{task.usDts}</Text>;
   };
 
+  // 生成项目下拉选项
+  const projectOptions = projects.map(p => ({ value: p.name, label: p.name }));
+
+  // 生成责任人下拉选项（排除超管）
+  const assigneeOptions = users
+    .filter(u => u.role !== UserRole.SUPER_ADMIN)
+    .map(u => ({ value: u.username, label: u.username }));
+
   return (
     <div>
       <Group mb="md" align="flex-end">
-        <NumberInput
-          label="年份"
-          value={year}
-          onChange={(val) => setYear(Number(val))}
-          min={2000}
-          max={2100}
-          style={{ width: 120 }}
-        />
-        <NumberInput
-          label="周数"
-          placeholder="全部"
-          description={weekNumber ? getWeekDateRange(year, Number(weekNumber)) : ''}
-          value={weekNumber}
-          onChange={(val) => setWeekNumber(val)}
-          min={1}
-          max={53}
-          style={{ width: 120 }}
-        />
-        <TextInput
+        <Select
           label="项目筛选"
-          placeholder="输入项目名称"
+          placeholder="全部项目"
+          data={projectOptions}
           value={projectFilter}
-          onChange={(e) => setProjectFilter(e.target.value)}
-          style={{ width: 150 }}
+          onChange={(value) => setProjectFilter(value)}
+          clearable
+          searchable
+          style={{ width: 160 }}
         />
-        <TextInput
+        <Select
           label="责任人筛选"
-          placeholder="输入责任人"
+          placeholder="全部责任人"
+          data={assigneeOptions}
           value={assigneeFilter}
-          onChange={(e) => setAssigneeFilter(e.target.value)}
-          style={{ width: 150 }}
+          onChange={(value) => setAssigneeFilter(value)}
+          clearable
+          searchable
+          style={{ width: 160 }}
         />
-        <Button onClick={handleSearch} loading={loading}>
-          查询
-        </Button>
         <Button onClick={openCreateModal}>
           新增任务
+        </Button>
+        <Button color="orange" onClick={openCopyModal}>
+          复制上周任务
         </Button>
       </Group>
 
@@ -205,43 +198,56 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
         <Text size="sm" c="dimmed">工作量单位：人天</Text>
       </Group>
       <ScrollArea>
-        <Table striped highlightOnHover>
+        <Table striped highlightOnHover style={{ minWidth: 1680 }}>
           <Table.Thead>
             <Table.Tr>
               <Table.Th style={{ width: 100 }}>项目</Table.Th>
-              <Table.Th style={{ width: 200 }}>US/DTS</Table.Th>
-              <Table.Th style={{ width: 350 }}>任务详情</Table.Th>
+              <Table.Th style={{ width: 190 }}>US/DTS</Table.Th>
+              <Table.Th style={{ width: 300 }}>任务详情</Table.Th>
               <Table.Th style={{ width: 90 }}>进度</Table.Th>
               <Table.Th style={{ width: 90 }}>预计</Table.Th>
               <Table.Th style={{ width: 90 }}>实际</Table.Th>
-              <Table.Th style={{ width: 90 }}>本周</Table.Th>
-              <Table.Th style={{ width: 200 }}>计划时间</Table.Th>
-              <Table.Th style={{ width: 200 }}>实际时间</Table.Th>
+              <Table.Th style={{ width: 90 }}>本周计划</Table.Th>
+              <Table.Th style={{ width: 90 }}>本周实际</Table.Th>
+              <Table.Th style={{ width: 170 }}>计划时间</Table.Th>
+              <Table.Th style={{ width: 170 }}>实际时间</Table.Th>
               <Table.Th style={{ width: 90 }}>责任人</Table.Th>
-              <Table.Th style={{ width: 100 }}>备注</Table.Th>
+              <Table.Th style={{ width: 110 }}>备注</Table.Th>
               <Table.Th style={{ width: 100 }}>操作</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {filteredTasks.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={12}>
+                <Table.Td colSpan={13}>
                   <Text c="dimmed" ta="center">暂无数据</Text>
                 </Table.Td>
               </Table.Tr>
             ) : (
               filteredTasks.map((task) => (
                 <Table.Tr key={task.id}>
-                  <Table.Td>{task.project}</Table.Td>
-                  <Table.Td style={{ width: 200 }}>{renderUsDts(task)}</Table.Td>
-                  <Table.Td style={{ maxWidth: 350 }}>
+                  <Table.Td style={{ width: 100 }}>
+                    <Tooltip
+                      label={task.project}
+                      disabled={task.project.length <= 10}
+                    >
+                      <Text
+                        lineClamp={1}
+                        style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                      >
+                        {task.project}
+                      </Text>
+                    </Tooltip>
+                  </Table.Td>
+                  <Table.Td style={{ width: 190 }}>{renderUsDts(task)}</Table.Td>
+                  <Table.Td style={{ width: 300 }}>
                     <Tooltip
                       label={task.taskDetail}
                       multiline
                       maw={400}
                       styles={{ tooltip: { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } }}
                     >
-                      <Text lineClamp={2} style={{ maxWidth: 350 }}>{task.taskDetail}</Text>
+                      <Text lineClamp={2} style={{ maxWidth: 300 }}>{task.taskDetail}</Text>
                     </Tooltip>
                   </Table.Td>
                   <Table.Td style={{ width: 90 }}>
@@ -251,19 +257,20 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
                   </Table.Td>
                   <Table.Td style={{ width: 90 }}>{task.estimatedWorkload || '-'}</Table.Td>
                   <Table.Td style={{ width: 90 }}>{task.actualWorkload || '-'}</Table.Td>
+                  <Table.Td style={{ width: 90 }}>{task.plannedWeeklyWorkload || '-'}</Table.Td>
                   <Table.Td style={{ width: 90 }}>{task.weeklyWorkload || '-'}</Table.Td>
-                  <Table.Td style={{ width: 200 }}>
+                  <Table.Td style={{ width: 170 }}>
                     <Text size="xs">
                       {task.plannedStartDate || '-'} ~ {task.plannedEndDate || '-'}
                     </Text>
                   </Table.Td>
-                  <Table.Td style={{ width: 200 }}>
+                  <Table.Td style={{ width: 170 }}>
                     <Text size="xs">
                       {task.actualStartDate || '-'} ~ {task.actualEndDate || '-'}
                     </Text>
                   </Table.Td>
                   <Table.Td style={{ width: 90 }}>{task.assignee || '-'}</Table.Td>
-                  <Table.Td style={{ width: 100 }}>
+                  <Table.Td style={{ width: 110 }}>
                     {task.remark ? (
                       <Tooltip
                         label={task.remark}
@@ -272,7 +279,7 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
                         styles={{ tooltip: { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } }}
                       >
                         <span style={{ display: 'inline-block', cursor: 'pointer' }}>
-                          <Text lineClamp={2} style={{ maxWidth: 100 }}>{task.remark}</Text>
+                          <Text lineClamp={2} style={{ maxWidth: 110 }}>{task.remark}</Text>
                         </span>
                       </Tooltip>
                     ) : (
@@ -328,27 +335,16 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
           <Button color="red" onClick={handleDeleteConfirm}>确认删除</Button>
         </Group>
       </Modal>
+
+      <CopyTaskModal
+        opened={copyModalOpened}
+        onClose={closeCopyModal}
+        onSuccess={() => {
+          closeCopyModal();
+          fetchTasks();
+        }}
+        users={users}
+      />
     </div>
   );
-}
-
-function getWeekDateRange(year: number, week: number): string {
-  const simple = new Date(year, 0, 1 + (week - 1) * 7);
-  const dow = simple.getDay();
-  const weekStart = simple;
-  if (dow <= 4) {
-    weekStart.setDate(simple.getDate() - simple.getDay() + 1);
-  } else {
-    weekStart.setDate(simple.getDate() + 8 - simple.getDay());
-  }
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
-
-  const formatDate = (d: Date) => {
-    const month = d.getMonth() + 1;
-    const day = d.getDate();
-    return `${month}月${day}日`;
-  };
-
-  return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
 }

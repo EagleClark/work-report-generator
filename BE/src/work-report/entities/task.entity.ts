@@ -36,6 +36,9 @@ export class Task {
   @Column({ type: 'real', default: 0 })
   weeklyWorkload: number;
 
+  @Column({ type: 'real', default: 0 })
+  plannedWeeklyWorkload: number;
+
   @Column({ nullable: true })
   actualStartDate: string;
 

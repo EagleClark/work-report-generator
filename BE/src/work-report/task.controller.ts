@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { TaskService } from './task.service';
 import { CreateTaskDto, UpdateTaskDto, QueryTaskDto } from './dto/task.dto';
+import { CopyTaskDto } from './dto/copy-task.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -37,6 +38,11 @@ export class TaskController {
     @Query('weekNumber') weekNumber: string,
   ) {
     return this.taskService.getWeeklySummary(parseInt(year, 10), parseInt(weekNumber, 10));
+  }
+
+  @Post('copy')
+  copyTasks(@Body() copyDto: CopyTaskDto, @CurrentUser() user: User) {
+    return this.taskService.copyIncompleteTasks(copyDto, user);
   }
 
   @Get(':id')

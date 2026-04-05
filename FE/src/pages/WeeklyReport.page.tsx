@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Container, Title, Text, Table, Group, Button, NumberInput, Badge,
+  Container, Title, Text, Table, Group, Badge,
   SimpleGrid, Paper, RingProgress, ScrollArea, Stack, Box, ThemeIcon, Tooltip,
   Progress
 } from '@mantine/core';
 import { taskApi } from '../services/task.api';
 import type { WeeklySummary, Task } from '../types/task';
+import { useWeek, getWeekDateRange } from '../context/WeekContext';
 
 // 项目统计项接口
 interface ProjectUsDtsStats {
@@ -21,6 +22,7 @@ interface AssigneeStats {
   estimatedWorkload: number;
   actualWorkload: number;
   weeklyWorkload: number;
+  plannedWeeklyWorkload: number;
   completionRate: number;
 }
 
@@ -90,6 +92,7 @@ function calculateAssigneeStats(tasks: Task[]): AssigneeStats[] {
         estimatedWorkload: 0,
         actualWorkload: 0,
         weeklyWorkload: 0,
+        plannedWeeklyWorkload: 0,
         completionRate: 0,
       });
     }
@@ -99,6 +102,7 @@ function calculateAssigneeStats(tasks: Task[]): AssigneeStats[] {
     stats.estimatedWorkload += task.estimatedWorkload || 0;
     stats.actualWorkload += task.actualWorkload || 0;
     stats.weeklyWorkload += task.weeklyWorkload || 0;
+    stats.plannedWeeklyWorkload += task.plannedWeeklyWorkload || 0;
   });
 
   // 计算完成率
@@ -113,8 +117,7 @@ function calculateAssigneeStats(tasks: Task[]): AssigneeStats[] {
 }
 
 export function WeeklyReportPage() {
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [weekNumber, setWeekNumber] = useState(getCurrentWeekNumber());
+  const { year, weekNumber } = useWeek();
   const [summary, setSummary] = useState<WeeklySummary | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -141,7 +144,7 @@ export function WeeklyReportPage() {
   const fetchSummary = async () => {
     setLoading(true);
     try {
-      const data = await taskApi.getWeeklySummary(year, Number(weekNumber));
+      const data = await taskApi.getWeeklySummary(year, weekNumber);
       setSummary(data);
     } catch (error) {
       // Silent fail
@@ -150,17 +153,17 @@ export function WeeklyReportPage() {
     }
   };
 
-  // 页面加载时自动查询当前周数据
+  // 年份或周数变化时自动查询
   useEffect(() => {
     fetchSummary();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [year, weekNumber]);
 
   const getProgressColor = (progress: number) => {
     if (progress >= 100) return 'green';
+    if (progress >= 75) return 'blue';
     if (progress >= 50) return 'yellow';
-    if (progress > 0) return 'blue';
-    return 'gray';
+    if (progress >= 25) return 'orange';
+    return 'red';
   };
 
   // 渲染US/DTS，支持链接
@@ -186,32 +189,9 @@ export function WeeklyReportPage() {
   };
 
   return (
-    <Container size="xl" py="xl" style={{ minWidth: 1600 }}>
+    <Container size="xl" py="xl" style={{ minWidth: 1800 }}>
       <Title order={1} mb="xs">周报汇总</Title>
       <Text c="dimmed" mb="xl">查看每周任务汇总</Text>
-
-      <Group mb="lg" align="flex-end">
-        <NumberInput
-          label="年份"
-          value={year}
-          onChange={(val) => setYear(Number(val))}
-          min={2000}
-          max={2100}
-          style={{ width: 120 }}
-        />
-        <NumberInput
-          label="周数"
-          description={getWeekDateRange(year, Number(weekNumber))}
-          value={weekNumber}
-          onChange={(val) => setWeekNumber(Number(val))}
-          min={1}
-          max={53}
-          style={{ width: 120 }}
-        />
-        <Button onClick={fetchSummary} loading={loading}>
-          查询
-        </Button>
-      </Group>
 
       {summary && (
         <>
@@ -349,7 +329,11 @@ export function WeeklyReportPage() {
                           <Text size="sm" fw={500}>{stat.actualWorkload} 人天</Text>
                         </Group>
                         <Group justify="space-between">
-                          <Text size="sm" c="dimmed">本周</Text>
+                          <Text size="sm" c="dimmed">本周计划</Text>
+                          <Text size="sm" fw={500} c="orange">{stat.plannedWeeklyWorkload} 人天</Text>
+                        </Group>
+                        <Group justify="space-between">
+                          <Text size="sm" c="dimmed">本周实际</Text>
                           <Text size="sm" fw={500} c="blue">{stat.weeklyWorkload} 人天</Text>
                         </Group>
                         <Box mt="xs">
@@ -469,35 +453,48 @@ export function WeeklyReportPage() {
             <Text size="sm" c="dimmed">工作量单位：人天</Text>
           </Group>
           <ScrollArea>
-            <Table striped highlightOnHover>
+            <Table striped highlightOnHover style={{ minWidth: 1680 }}>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th style={{ width: 100 }}>项目</Table.Th>
-                    <Table.Th style={{ width: 200 }}>US/DTS</Table.Th>
-                    <Table.Th style={{ width: 350 }}>任务详情</Table.Th>
+                    <Table.Th style={{ width: 190 }}>US/DTS</Table.Th>
+                    <Table.Th style={{ width: 300 }}>任务详情</Table.Th>
                     <Table.Th style={{ width: 90 }}>进度</Table.Th>
                     <Table.Th style={{ width: 90 }}>预计</Table.Th>
                     <Table.Th style={{ width: 90 }}>实际</Table.Th>
-                    <Table.Th style={{ width: 90 }}>本周</Table.Th>
-                    <Table.Th style={{ width: 200 }}>计划时间</Table.Th>
-                    <Table.Th style={{ width: 200 }}>实际时间</Table.Th>
+                    <Table.Th style={{ width: 90 }}>本周计划</Table.Th>
+                    <Table.Th style={{ width: 90 }}>本周实际</Table.Th>
+                    <Table.Th style={{ width: 170 }}>计划时间</Table.Th>
+                    <Table.Th style={{ width: 170 }}>实际时间</Table.Th>
                     <Table.Th style={{ width: 90 }}>责任人</Table.Th>
-                    <Table.Th style={{ width: 100 }}>备注</Table.Th>
+                    <Table.Th style={{ width: 110 }}>备注</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {summary.tasks.length === 0 ? (
                     <Table.Tr>
-                      <Table.Td colSpan={11}>
+                      <Table.Td colSpan={12}>
                         <Text c="dimmed" ta="center">暂无数据</Text>
                       </Table.Td>
                     </Table.Tr>
                   ) : (
                     summary.tasks.map((task) => (
                       <Table.Tr key={task.id}>
-                        <Table.Td>{task.project}</Table.Td>
-                        <Table.Td style={{ width: 200 }}>{renderUsDts(task)}</Table.Td>
-                        <Table.Td style={{ maxWidth: 350 }}>
+                        <Table.Td style={{ width: 100 }}>
+                          <Tooltip
+                            label={task.project}
+                            disabled={task.project.length <= 10}
+                          >
+                            <Text
+                              lineClamp={1}
+                              style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                            >
+                              {task.project}
+                            </Text>
+                          </Tooltip>
+                        </Table.Td>
+                        <Table.Td style={{ width: 190 }}>{renderUsDts(task)}</Table.Td>
+                        <Table.Td style={{ width: 300 }}>
                           <Tooltip
                             label={task.taskDetail}
                             multiline
@@ -505,7 +502,7 @@ export function WeeklyReportPage() {
                             styles={{ tooltip: { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } }}
                           >
                             <span style={{ display: 'inline-block', cursor: 'pointer' }}>
-                              <Text lineClamp={2} style={{ maxWidth: 350 }}>{task.taskDetail}</Text>
+                              <Text lineClamp={2} style={{ maxWidth: 300 }}>{task.taskDetail}</Text>
                             </span>
                           </Tooltip>
                         </Table.Td>
@@ -516,19 +513,20 @@ export function WeeklyReportPage() {
                         </Table.Td>
                         <Table.Td style={{ width: 90 }}>{task.estimatedWorkload}</Table.Td>
                         <Table.Td style={{ width: 90 }}>{task.actualWorkload}</Table.Td>
+                        <Table.Td style={{ width: 90 }}>{task.plannedWeeklyWorkload || '-'}</Table.Td>
                         <Table.Td style={{ width: 90 }}>{task.weeklyWorkload}</Table.Td>
-                        <Table.Td style={{ width: 200 }}>
+                        <Table.Td style={{ width: 170 }}>
                           <Text size="xs">
                             {task.plannedStartDate || '-'} ~ {task.plannedEndDate || '-'}
                           </Text>
                         </Table.Td>
-                        <Table.Td style={{ width: 200 }}>
+                        <Table.Td style={{ width: 170 }}>
                           <Text size="xs">
                             {task.actualStartDate || '-'} ~ {task.actualEndDate || '-'}
                           </Text>
                         </Table.Td>
                         <Table.Td style={{ width: 90 }}>{task.assignee || '-'}</Table.Td>
-                        <Table.Td style={{ width: 100 }}>
+                        <Table.Td style={{ width: 110 }}>
                           {task.remark ? (
                             <Tooltip
                               label={task.remark}
@@ -537,7 +535,7 @@ export function WeeklyReportPage() {
                               styles={{ tooltip: { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } }}
                             >
                               <span style={{ display: 'inline-block', cursor: 'pointer' }}>
-                                <Text lineClamp={2} style={{ maxWidth: 100 }}>{task.remark}</Text>
+                                <Text lineClamp={2} style={{ maxWidth: 110 }}>{task.remark}</Text>
                               </span>
                             </Tooltip>
                           ) : (
@@ -554,32 +552,4 @@ export function WeeklyReportPage() {
       )}
     </Container>
   );
-}
-
-function getCurrentWeekNumber(): number {
-  const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-  const days = Math.floor((now.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
-  return Math.ceil((days + startOfYear.getDay() + 1) / 7);
-}
-
-function getWeekDateRange(year: number, week: number): string {
-  const simple = new Date(year, 0, 1 + (week - 1) * 7);
-  const dow = simple.getDay();
-  const weekStart = simple;
-  if (dow <= 4) {
-    weekStart.setDate(simple.getDate() - simple.getDay() + 1);
-  } else {
-    weekStart.setDate(simple.getDate() + 8 - simple.getDay());
-  }
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
-  
-  const formatDate = (d: Date) => {
-    const month = d.getMonth() + 1;
-    const day = d.getDate();
-    return `${month}月${day}日`;
-  };
-  
-  return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
 }

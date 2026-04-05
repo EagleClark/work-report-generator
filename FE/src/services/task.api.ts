@@ -1,5 +1,5 @@
 import api from './api';
-import type { Task, CreateTaskDto, UpdateTaskDto, QueryTaskDto, WeeklySummary } from '../types/task';
+import type { Task, CreateTaskDto, UpdateTaskDto, QueryTaskDto, WeeklySummary, CopyTaskDto, CopyTaskResult } from '../types/task';
 
 const API_BASE = '/tasks';
 
@@ -36,5 +36,10 @@ export const taskApi = {
 
   delete: async (id: number): Promise<void> => {
     await api.delete(`${API_BASE}/${id}`);
+  },
+
+  copyIncompleteTasks: async (dto: CopyTaskDto): Promise<CopyTaskResult> => {
+    const res = await api.post<CopyTaskResult>(`${API_BASE}/copy`, dto);
+    return res.data;
   },
 };

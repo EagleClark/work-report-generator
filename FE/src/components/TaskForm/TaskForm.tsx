@@ -19,6 +19,7 @@ interface FormErrors {
   assignee?: string;
   taskDetail?: string;
   estimatedWorkload?: string;
+  plannedWeeklyWorkload?: string;
   plannedStartDate?: string;
   plannedEndDate?: string;
   usDtsLink?: string;
@@ -65,6 +66,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
   const [plannedEndDate, setPlannedEndDate] = useState(initialData?.plannedEndDate || '');
   const [actualWorkload, setActualWorkload] = useState(initialData?.actualWorkload || 0);
   const [weeklyWorkload, setWeeklyWorkload] = useState(initialData?.weeklyWorkload || 0);
+  const [plannedWeeklyWorkload, setPlannedWeeklyWorkload] = useState(initialData?.plannedWeeklyWorkload || 0);
   const [actualStartDate, setActualStartDate] = useState(initialData?.actualStartDate || '');
   const [actualEndDate, setActualEndDate] = useState(initialData?.actualEndDate || '');
   const [year, setYear] = useState(initialData?.year || new Date().getFullYear());
@@ -157,6 +159,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
         usDts,
         taskDetail,
         estimatedWorkload,
+        plannedWeeklyWorkload,
         plannedStartDate,
         plannedEndDate,
         year,
@@ -191,6 +194,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
     setTaskDetail('');
     setProgress(0);
     setEstimatedWorkload(0);
+    setPlannedWeeklyWorkload(0);
     setPlannedStartDate('');
     setPlannedEndDate('');
     setActualWorkload(0);
@@ -261,9 +265,9 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
           error={errors.taskDetail}
         />
 
-        {/* 第四行：预计工作量（新增时）/ 当前进度 + 预计工作量（编辑时） */}
+        {/* 第四行：预计工作量 + 计划本周工作量（新增时必填） */}
         {isEdit ? (
-          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <SimpleGrid cols={{ base: 1, sm: 3 }}>
             <NumberInput
               label="当前进度"
               suffix=" %"
@@ -283,17 +287,37 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
               required
               error={errors.estimatedWorkload}
             />
+            <NumberInput
+              label="计划本周投入"
+              suffix=" 人天"
+              value={plannedWeeklyWorkload}
+              onChange={(val) => { setPlannedWeeklyWorkload(Number(val) || 0); clearError('plannedWeeklyWorkload'); }}
+              min={0}
+              required
+              error={errors.plannedWeeklyWorkload}
+            />
           </SimpleGrid>
         ) : (
-          <NumberInput
-            label="预计工作量"
-            suffix=" 人天"
-            value={estimatedWorkload}
-            onChange={(val) => { setEstimatedWorkload(Number(val) || 0); clearError('estimatedWorkload'); }}
-            min={0}
-            required
-            error={errors.estimatedWorkload}
-          />
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <NumberInput
+              label="预计工作量"
+              suffix=" 人天"
+              value={estimatedWorkload}
+              onChange={(val) => { setEstimatedWorkload(Number(val) || 0); clearError('estimatedWorkload'); }}
+              min={0}
+              required
+              error={errors.estimatedWorkload}
+            />
+            <NumberInput
+              label="计划本周投入"
+              suffix=" 人天"
+              value={plannedWeeklyWorkload}
+              onChange={(val) => { setPlannedWeeklyWorkload(Number(val) || 0); clearError('plannedWeeklyWorkload'); }}
+              min={0}
+              required
+              error={errors.plannedWeeklyWorkload}
+            />
+          </SimpleGrid>
         )}
 
         {/* 第五行：计划开始时间 + 计划结束时间（必填） */}

@@ -8,17 +8,20 @@ import { Router } from './Router';
 import { theme } from './theme';
 import { AppShellLayout } from './components/AppShellLayout/AppShellLayout';
 import { AuthProvider } from './context/AuthContext';
+import { WeekProvider } from './context/WeekContext';
 
 export default function App() {
   return (
     <MantineProvider theme={theme} defaultColorScheme="auto">
       <Notifications position="top-center" />
       <AuthProvider>
-        <BrowserRouter>
-          <AppShellLayout>
-            <Router />
-          </AppShellLayout>
-        </BrowserRouter>
+        <WeekProvider>
+          <BrowserRouter>
+            <AppShellLayout>
+              <Router />
+            </AppShellLayout>
+          </BrowserRouter>
+        </WeekProvider>
       </AuthProvider>
     </MantineProvider>
   );
