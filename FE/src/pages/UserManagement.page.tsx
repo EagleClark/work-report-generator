@@ -11,8 +11,10 @@ import {
   Group,
   Badge,
   Stack,
+  Text,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
 import { userApi } from '../services/user.api';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types/user';
@@ -21,6 +23,8 @@ import type { User } from '../types/user';
 export function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
+  const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({ username: '', password: '', role: UserRole.USER });
   const [loading, setLoading] = useState(false);
   const { user: currentUser } = useAuth();
@@ -45,20 +49,37 @@ export function UserManagementPage() {
       closeModal();
       setFormData({ username: '', password: '', role: UserRole.USER });
       fetchUsers();
+      notifications.show({ title: '成功', message: '用户创建成功', color: 'green' });
     } catch (err: any) {
-      alert(err.response?.data?.message || '创建用户失败');
+      notifications.show({
+        title: '错误',
+        message: err.response?.data?.message || '创建用户失败',
+        color: 'red',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('确定要删除该用户吗？')) return;
+  const handleDeleteClick = (user: User) => {
+    setDeletingUser(user);
+    openDeleteModal();
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingUser) return;
     try {
-      await userApi.delete(id);
+      await userApi.delete(deletingUser.id);
+      closeDeleteModal();
+      setDeletingUser(null);
       fetchUsers();
+      notifications.show({ title: '成功', message: '用户删除成功', color: 'green' });
     } catch (err: any) {
-      alert(err.response?.data?.message || '删除用户失败');
+      notifications.show({
+        title: '错误',
+        message: err.response?.data?.message || '删除用户失败',
+        color: 'red',
+      });
     }
   };
 
@@ -125,7 +146,7 @@ export function UserManagementPage() {
                     size="compact-xs"
                     variant="light"
                     color="red"
-                    onClick={() => handleDelete(user.id)}
+                    onClick={() => handleDeleteClick(user)}
                   >
                     删除
                   </Button>
@@ -168,6 +189,16 @@ export function UserManagementPage() {
             <Button onClick={handleCreate} loading={loading}>
               创建
             </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal opened={deleteModalOpened} onClose={closeDeleteModal} title="确认删除">
+        <Stack>
+          <Text>确定要删除用户 <strong>{deletingUser?.username}</strong> 吗？</Text>
+          <Group justify="flex-end" mt="lg">
+            <Button variant="default" onClick={closeDeleteModal}>取消</Button>
+            <Button color="red" onClick={handleDeleteConfirm}>确认删除</Button>
           </Group>
         </Stack>
       </Modal>
