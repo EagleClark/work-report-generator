@@ -7,6 +7,7 @@ import {
 import { taskApi } from '../services/task.api';
 import type { WeeklySummary, Task } from '../types/task';
 import { useWeek } from '../context/WeekContext';
+import { AIAnalysisDisplay } from '../components/AIAnalysisDisplay/AIAnalysisDisplay';
 
 // 任务分类统计接口
 interface CategoryStats {
@@ -416,6 +417,11 @@ export function WeeklyReportPage() {
               </Text>
             </Paper>
           </SimpleGrid>
+
+          {/* AI 智能分析 */}
+          <Box mb="lg">
+            <AIAnalysisDisplay year={year} weekNumber={weekNumber} />
+          </Box>
 
           {/* 项目维度统计 */}
           {projectStats.length > 0 && (

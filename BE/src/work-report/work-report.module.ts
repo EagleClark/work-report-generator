@@ -11,5 +11,6 @@ import { Task } from './entities/task.entity';
   imports: [TypeOrmModule.forFeature([WorkReport, Task])],
   controllers: [WorkReportController, TaskController],
   providers: [WorkReportService, TaskService],
+  exports: [TaskService],
 })
 export class WorkReportModule {}
