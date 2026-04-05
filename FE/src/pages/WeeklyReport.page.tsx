@@ -212,6 +212,34 @@ export function WeeklyReportPage() {
     return assigneeProjectStats.length;
   }, [assigneeProjectStats]);
 
+  // 计算需求概览：已完成和进行中的US需求（仅统计US/DTS列以US开头的任务）
+  const requirementOverview = useMemo(() => {
+    if (!summary?.tasks) return { completed: [], inProgress: [] };
+
+    // 只统计US开头的需求
+    const usTasks = summary.tasks.filter(task => isUs(task.usDts));
+
+    const completed = usTasks
+      .filter(task => task.progress === 100)
+      .map(task => ({
+        project: task.project,
+        taskDetail: task.taskDetail,
+        status: 'completed' as const,
+      }))
+      .sort((a, b) => a.project.localeCompare(b.project, 'zh-CN')); // 按项目排序
+
+    const inProgress = usTasks
+      .filter(task => task.progress > 0 && task.progress < 100)
+      .map(task => ({
+        project: task.project,
+        taskDetail: task.taskDetail,
+        status: 'inProgress' as const,
+      }))
+      .sort((a, b) => a.project.localeCompare(b.project, 'zh-CN')); // 按项目排序
+
+    return { completed, inProgress };
+  }, [summary?.tasks]);
+
   const fetchSummary = async () => {
     setLoading(true);
     try {
@@ -412,6 +440,115 @@ export function WeeklyReportPage() {
                     </Stack>
                   </Paper>
                 ))}
+              </SimpleGrid>
+            </Box>
+          )}
+
+          {/* 需求概览 - 放在人员工作量统计上面 */}
+          {(requirementOverview.completed.length > 0 || requirementOverview.inProgress.length > 0) && (
+            <Box mb="lg">
+              <Group justify="space-between" align="center" mb="md">
+                <Text size="lg" fw={500}>需求概览</Text>
+                <Group gap="md">
+                  <Badge size="lg" color="green" variant="light" leftSection="✓">
+                    已完成 {requirementOverview.completed.length}
+                  </Badge>
+                  <Badge size="lg" color="blue" variant="light" leftSection="◐">
+                    进行中 {requirementOverview.inProgress.length}
+                  </Badge>
+                </Group>
+              </Group>
+
+              <SimpleGrid cols={2} spacing="md">
+                {/* 已完成表格 */}
+                <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+                  <Box
+                    px="md"
+                    py="xs"
+                    style={{
+                      borderBottom: '1px solid var(--mantine-color-gray-3)',
+                      borderLeft: '3px solid var(--mantine-color-teal-6)',
+                    }}
+                  >
+                    <Group gap="xs">
+                      <Text size="sm" fw={500} c="teal.7">已完成</Text>
+                      <Badge size="xs" color="teal" variant="light">{requirementOverview.completed.length}</Badge>
+                    </Group>
+                  </Box>
+                  <ScrollArea.Autosize mah={280}>
+                    {requirementOverview.completed.length === 0 ? (
+                      <Text c="dimmed" ta="center" py="xl" size="sm">暂无已完成需求</Text>
+                    ) : (
+                      <Table striped highlightOnHover>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th style={{ width: 150 }}>项目</Table.Th>
+                            <Table.Th>任务详情</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {requirementOverview.completed.map((item, index) => (
+                            <Table.Tr key={index}>
+                              <Table.Td>
+                                <Badge size="sm" variant="dot" color="gray" radius="sm" tt="none">
+                                  {item.project}
+                                </Badge>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="sm" lineClamp={2}>{item.taskDetail}</Text>
+                              </Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    )}
+                  </ScrollArea.Autosize>
+                </Paper>
+
+                {/* 进行中表格 */}
+                <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+                  <Box
+                    px="md"
+                    py="xs"
+                    style={{
+                      borderBottom: '1px solid var(--mantine-color-gray-3)',
+                      borderLeft: '3px solid var(--mantine-color-cyan-6)',
+                    }}
+                  >
+                    <Group gap="xs">
+                      <Text size="sm" fw={500} c="cyan.7">进行中</Text>
+                      <Badge size="xs" color="cyan" variant="light">{requirementOverview.inProgress.length}</Badge>
+                    </Group>
+                  </Box>
+                  <ScrollArea.Autosize mah={280}>
+                    {requirementOverview.inProgress.length === 0 ? (
+                      <Text c="dimmed" ta="center" py="xl" size="sm">暂无进行中需求</Text>
+                    ) : (
+                      <Table striped highlightOnHover>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th style={{ width: 150 }}>项目</Table.Th>
+                            <Table.Th>任务详情</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {requirementOverview.inProgress.map((item, index) => (
+                            <Table.Tr key={index}>
+                              <Table.Td>
+                                <Badge size="sm" variant="dot" color="gray" radius="sm" tt="none">
+                                  {item.project}
+                                </Badge>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="sm" lineClamp={2}>{item.taskDetail}</Text>
+                              </Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    )}
+                  </ScrollArea.Autosize>
+                </Paper>
               </SimpleGrid>
             </Box>
           )}
