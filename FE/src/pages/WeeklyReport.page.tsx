@@ -163,7 +163,8 @@ export function WeeklyReportPage() {
     if (progress >= 75) return 'blue';
     if (progress >= 50) return 'yellow';
     if (progress >= 25) return 'orange';
-    return 'red';
+    if (progress > 0) return 'red';
+    return 'gray';
   };
 
   // 渲染US/DTS，支持链接

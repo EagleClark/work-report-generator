@@ -12,6 +12,8 @@ interface TaskFormProps {
   currentUser?: { id: number; username: string; role: UserRole } | null;
   users?: User[];
   projects?: Project[];
+  defaultYear?: number;
+  defaultWeekNumber?: number;
 }
 
 interface FormErrors {
@@ -41,15 +43,22 @@ function isValidUrl(url: string): boolean {
   }
 }
 
-export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser, users, projects }: TaskFormProps) {
+export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser, users, projects, defaultYear, defaultWeekNumber }: TaskFormProps) {
   // 普通用户创建任务时，负责人默认为当前用户且不可修改
   const isRegularUser = currentUser?.role === UserRole.USER;
-  const defaultAssignee = !isEdit && isRegularUser ? currentUser?.username || '' : initialData?.assignee || '';
+  const defaultAssignee = !isEdit && isRegularUser && currentUser?.username ? currentUser.username : (initialData?.assignee || '');
 
-  // 生成责任人下拉选项（排除超管）
+  // 生成责任人下拉选项（排除超管，确保当前用户在选项中）
   const assigneeOptions = (users || [])
     .filter(u => u.role !== UserRole.SUPER_ADMIN)
     .map(u => ({ value: u.username, label: u.username }));
+
+  // 如果当前用户不在选项中，添加进去
+  if (currentUser?.username && currentUser.role !== UserRole.SUPER_ADMIN) {
+    if (!assigneeOptions.some(opt => opt.value === currentUser.username)) {
+      assigneeOptions.push({ value: currentUser.username, label: currentUser.username });
+    }
+  }
 
   // 生成项目下拉选项
   const projectOptions = (projects || [])
@@ -69,8 +78,8 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
   const [plannedWeeklyWorkload, setPlannedWeeklyWorkload] = useState(initialData?.plannedWeeklyWorkload || 0);
   const [actualStartDate, setActualStartDate] = useState(initialData?.actualStartDate || '');
   const [actualEndDate, setActualEndDate] = useState(initialData?.actualEndDate || '');
-  const [year, setYear] = useState(initialData?.year || new Date().getFullYear());
-  const [weekNumber, setWeekNumber] = useState(initialData?.weekNumber || getCurrentWeekNumber());
+  const [year, setYear] = useState(initialData?.year || defaultYear || new Date().getFullYear());
+  const [weekNumber, setWeekNumber] = useState(initialData?.weekNumber || defaultWeekNumber || getCurrentWeekNumber());
   const [remark, setRemark] = useState(initialData?.remark || '');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -188,7 +197,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
 
   const resetForm = () => {
     setProject('');
-    setAssignee('');
+    setAssignee(defaultAssignee);
     setUsDts('');
     setUsDtsLink('');
     setTaskDetail('');
@@ -202,8 +211,8 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
     setActualStartDate('');
     setActualEndDate('');
     setRemark('');
-    setYear(new Date().getFullYear());
-    setWeekNumber(getCurrentWeekNumber());
+    setYear(defaultYear || new Date().getFullYear());
+    setWeekNumber(defaultWeekNumber || getCurrentWeekNumber());
     setErrors({});
   };
 

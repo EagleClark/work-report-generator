@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Table, Group, Button, Modal, Badge, Text, ScrollArea, Tooltip, Select } from '@mantine/core';
+import { useState, useEffect, useMemo } from 'react';
+import { Table, Group, Button, Modal, Badge, Text, ScrollArea, Tooltip, Select, Paper } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { taskApi } from '../../services/task.api';
 import { userApi } from '../../services/user.api';
@@ -117,13 +117,14 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
     openModal();
   };
 
-  // 进度颜色：25%以下红，50%以下橙色，75%以下黄色，100%以下蓝色，100%绿色
+  // 进度颜色：0%灰色(未开始)，1-24%红色，25-49%橙色，50-74%黄色，75-99%蓝色，100%绿色
   const getProgressColor = (progress: number): string => {
     if (progress >= 100) return 'green';
     if (progress >= 75) return 'blue';
     if (progress >= 50) return 'yellow';
     if (progress >= 25) return 'orange';
-    return 'red';
+    if (progress > 0) return 'red';
+    return 'gray';
   };
 
   // Filter tasks by project and assignee
@@ -132,6 +133,29 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
     const matchAssignee = !assigneeFilter || task.assignee === assigneeFilter;
     return matchProject && matchAssignee;
   });
+
+  // 按责任人统计本周工作量和本周实际工作量
+  const assigneeStats = useMemo(() => {
+    const statsMap = new Map<string, { planned: number; actual: number }>();
+
+    filteredTasks.forEach(task => {
+      const assignee = task.assignee || '未分配';
+      if (!statsMap.has(assignee)) {
+        statsMap.set(assignee, { planned: 0, actual: 0 });
+      }
+      const stats = statsMap.get(assignee)!;
+      stats.planned += task.plannedWeeklyWorkload || 0;
+      stats.actual += task.weeklyWorkload || 0;
+    });
+
+    return Array.from(statsMap.entries())
+      .map(([assignee, stats]) => ({
+        assignee,
+        plannedWeeklyWorkload: stats.planned,
+        weeklyWorkload: stats.actual,
+      }))
+      .sort((a, b) => a.assignee.localeCompare(b.assignee));
+  }, [filteredTasks]);
 
   // 渲染US/DTS，支持链接
   const renderUsDts = (task: Task) => {
@@ -158,10 +182,17 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
   // 生成项目下拉选项
   const projectOptions = projects.map(p => ({ value: p.name, label: p.name }));
 
-  // 生成责任人下拉选项（排除超管）
+  // 生成责任人下拉选项（排除超管，确保当前用户在选项中）
   const assigneeOptions = users
     .filter(u => u.role !== UserRole.SUPER_ADMIN)
     .map(u => ({ value: u.username, label: u.username }));
+
+  // 如果当前用户不在选项中，添加进去
+  if (user?.username && user.role !== UserRole.SUPER_ADMIN) {
+    if (!assigneeOptions.some(opt => opt.value === user.username)) {
+      assigneeOptions.push({ value: user.username, label: user.username });
+    }
+  }
 
   return (
     <div>
@@ -194,9 +225,6 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
         </Button>
       </Group>
 
-      <Group mb="sm">
-        <Text size="sm" c="dimmed">工作量单位：人天</Text>
-      </Group>
       <ScrollArea>
         <Table striped highlightOnHover style={{ minWidth: 1680 }}>
           <Table.Thead>
@@ -307,6 +335,23 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
         </Table>
       </ScrollArea>
 
+      {/* 责任人工作量统计 */}
+      {assigneeStats.length > 0 && (
+        <Paper mt="md" p="sm" withBorder>
+          <Text size="sm" fw={500} mb="xs">责任人工作量统计（人天）</Text>
+          <Group gap="lg">
+            {assigneeStats.map(stat => (
+              <Group key={stat.assignee} gap="xs">
+                <Text size="sm" fw={500}>{stat.assignee}:</Text>
+                <Text size="sm" c="orange">计划 {stat.plannedWeeklyWorkload}</Text>
+                <Text size="sm" c="dimmed">/</Text>
+                <Text size="sm" c="blue">实际 {stat.weeklyWorkload}</Text>
+              </Group>
+            ))}
+          </Group>
+        </Paper>
+      )}
+
       <Modal
         opened={modalOpened}
         onClose={closeModal}
@@ -321,6 +366,8 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
           currentUser={user}
           users={users}
           projects={projects}
+          defaultYear={year}
+          defaultWeekNumber={weekNumber}
         />
       </Modal>
 
