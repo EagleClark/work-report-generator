@@ -2,8 +2,13 @@ import { useState, useEffect } from 'react';
 import { Table, Group, Button, NumberInput, Modal, Badge, Text, TextInput, ScrollArea, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { taskApi } from '../../services/task.api';
+import { userApi } from '../../services/user.api';
+import { projectApi, type Project } from '../../services/project.api';
 import type { Task, CreateTaskDto } from '../../types/task';
+import type { User } from '../../types/user';
 import { TaskForm } from '../TaskForm/TaskForm';
+import { useAuth } from '../../context/AuthContext';
+import { UserRole } from '../../types/user';
 
 interface TaskTableProps {
   refreshTrigger?: number;
@@ -12,6 +17,8 @@ interface TaskTableProps {
 
 export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [weekNumber, setWeekNumber] = useState<number | string>('');
   const [projectFilter, setProjectFilter] = useState('');
@@ -21,6 +28,14 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const { user, hasRole } = useAuth();
+
+  // 检查是否有权限操作该任务（管理员可操作所有，普通用户只能操作自己的）
+  const canOperateTask = (task: Task): boolean => {
+    if (!user) return false;
+    if (hasRole([UserRole.ADMIN, UserRole.SUPER_ADMIN])) return true;
+    return String(task.userId) === String(user.id);
+  };
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -39,8 +54,28 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const data = await userApi.getAll();
+      setUsers(data);
+    } catch (error) {
+      // Silent fail
+    }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const data = await projectApi.getAll();
+      setProjects(data);
+    } catch (error) {
+      // Silent fail
+    }
+  };
+
   useEffect(() => {
     fetchTasks();
+    fetchUsers();
+    fetchProjects();
   }, [refreshTrigger]);
 
   const handleSearch = () => {
@@ -245,14 +280,18 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
                     )}
                   </Table.Td>
                   <Table.Td style={{ width: 100 }}>
-                    <Group gap={4} wrap="nowrap">
-                      <Button size="compact-xs" variant="light" onClick={() => openEditModal(task)}>
-                        编辑
-                      </Button>
-                      <Button size="compact-xs" variant="light" color="red" onClick={() => handleDeleteClick(task.id)}>
-                        删除
-                      </Button>
-                    </Group>
+                    {canOperateTask(task) ? (
+                      <Group gap={4} wrap="nowrap">
+                        <Button size="compact-xs" variant="light" onClick={() => openEditModal(task)}>
+                          编辑
+                        </Button>
+                        <Button size="compact-xs" variant="light" color="red" onClick={() => handleDeleteClick(task.id)}>
+                          删除
+                        </Button>
+                      </Group>
+                    ) : (
+                      <Text c="dimmed" size="xs">-</Text>
+                    )}
                   </Table.Td>
                 </Table.Tr>
               ))
@@ -272,6 +311,9 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
           onCancel={closeModal}
           initialData={editingTask || undefined}
           isEdit={!!editingTask}
+          currentUser={user}
+          users={users}
+          projects={projects}
         />
       </Modal>
 

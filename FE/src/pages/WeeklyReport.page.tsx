@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Container, Title, Text, Table, Group, Button, NumberInput, Badge,
-  SimpleGrid, Paper, RingProgress, ScrollArea, Stack, Box, ThemeIcon, Tooltip
+  SimpleGrid, Paper, RingProgress, ScrollArea, Stack, Box, ThemeIcon, Tooltip,
+  Progress
 } from '@mantine/core';
 import { taskApi } from '../services/task.api';
 import type { WeeklySummary, Task } from '../types/task';
@@ -11,6 +12,16 @@ interface ProjectUsDtsStats {
   project: string;
   dts: { planned: number; completed: number; inProgress: number };
   us: { planned: number; completed: number; inProgress: number };
+}
+
+// 人员工作量统计接口
+interface AssigneeStats {
+  assignee: string;
+  taskCount: number;
+  estimatedWorkload: number;
+  actualWorkload: number;
+  weeklyWorkload: number;
+  completionRate: number;
 }
 
 // 判断是否为 DTS (以 DTS- 或 DTS 开头)
@@ -66,6 +77,41 @@ function calculateProjectStats(tasks: Task[]): ProjectUsDtsStats[] {
     .sort((a, b) => a.project.localeCompare(b.project));
 }
 
+// 按负责人分组统计工作量
+function calculateAssigneeStats(tasks: Task[]): AssigneeStats[] {
+  const assigneeMap = new Map<string, AssigneeStats>();
+
+  tasks.forEach(task => {
+    const assignee = task.assignee || '未分配';
+    if (!assigneeMap.has(assignee)) {
+      assigneeMap.set(assignee, {
+        assignee,
+        taskCount: 0,
+        estimatedWorkload: 0,
+        actualWorkload: 0,
+        weeklyWorkload: 0,
+        completionRate: 0,
+      });
+    }
+
+    const stats = assigneeMap.get(assignee)!;
+    stats.taskCount++;
+    stats.estimatedWorkload += task.estimatedWorkload || 0;
+    stats.actualWorkload += task.actualWorkload || 0;
+    stats.weeklyWorkload += task.weeklyWorkload || 0;
+  });
+
+  // 计算完成率
+  return Array.from(assigneeMap.values())
+    .map(stats => ({
+      ...stats,
+      completionRate: stats.estimatedWorkload > 0
+        ? Math.round((stats.actualWorkload / stats.estimatedWorkload) * 100)
+        : 0,
+    }))
+    .sort((a, b) => b.weeklyWorkload - a.weeklyWorkload);
+}
+
 export function WeeklyReportPage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [weekNumber, setWeekNumber] = useState(getCurrentWeekNumber());
@@ -77,6 +123,20 @@ export function WeeklyReportPage() {
     if (!summary?.tasks) return [];
     return calculateProjectStats(summary.tasks);
   }, [summary?.tasks]);
+
+  // 计算人员工作量统计
+  const assigneeStats = useMemo(() => {
+    if (!summary?.tasks) return [];
+    return calculateAssigneeStats(summary.tasks);
+  }, [summary?.tasks]);
+
+  // 计算团队总体完成率
+  const teamCompletionRate = useMemo(() => {
+    if (!summary) return 0;
+    return summary.totalEstimatedWorkload > 0
+      ? Math.round((summary.totalActualWorkload / summary.totalEstimatedWorkload) * 100)
+      : 0;
+  }, [summary]);
 
   const fetchSummary = async () => {
     setLoading(true);
@@ -90,8 +150,10 @@ export function WeeklyReportPage() {
     }
   };
 
+  // 页面加载时自动查询当前周数据
   useEffect(() => {
     fetchSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getProgressColor = (progress: number) => {
@@ -256,6 +318,149 @@ export function WeeklyReportPage() {
                   </Paper>
                 ))}
               </SimpleGrid>
+            </Box>
+          )}
+
+          {/* 人员工作量统计 */}
+          {assigneeStats.length > 0 && (
+            <Box mb="lg">
+              <Text size="lg" fw={500} mb="md">人员工作量统计</Text>
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }}>
+                {assigneeStats.map((stat) => {
+                  const rateColor = stat.completionRate >= 100 ? 'green' : stat.completionRate >= 80 ? 'yellow' : 'red';
+                  return (
+                    <Paper
+                      key={stat.assignee}
+                      p="md"
+                      withBorder
+                      radius="md"
+                    >
+                      <Group justify="space-between" mb="xs">
+                        <Text fw={600} size="md">{stat.assignee}</Text>
+                        <Badge size="sm" variant="light">{stat.taskCount} 个任务</Badge>
+                      </Group>
+                      <Stack gap={4}>
+                        <Group justify="space-between">
+                          <Text size="sm" c="dimmed">预计</Text>
+                          <Text size="sm" fw={500}>{stat.estimatedWorkload} 人天</Text>
+                        </Group>
+                        <Group justify="space-between">
+                          <Text size="sm" c="dimmed">实际</Text>
+                          <Text size="sm" fw={500}>{stat.actualWorkload} 人天</Text>
+                        </Group>
+                        <Group justify="space-between">
+                          <Text size="sm" c="dimmed">本周</Text>
+                          <Text size="sm" fw={500} c="blue">{stat.weeklyWorkload} 人天</Text>
+                        </Group>
+                        <Box mt="xs">
+                          <Group justify="space-between" mb={4}>
+                            <Text size="xs" c="dimmed">完成率</Text>
+                            <Text size="xs" fw={500} c={rateColor}>{stat.completionRate}%</Text>
+                          </Group>
+                          <Progress
+                            value={Math.min(stat.completionRate, 100)}
+                            color={rateColor}
+                            size="sm"
+                            radius="xl"
+                          />
+                        </Box>
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              </SimpleGrid>
+            </Box>
+          )}
+
+          {/* 工作量对比 */}
+          {assigneeStats.length > 0 && (
+            <Box mb="lg">
+              <Text size="lg" fw={500} mb="md">工作量对比</Text>
+              <Paper p="md" withBorder radius="md">
+                <Stack gap="md">
+                  {assigneeStats.map((stat) => {
+                    const maxWorkload = Math.max(stat.estimatedWorkload, stat.actualWorkload, 1);
+                    const rateColor = stat.completionRate >= 100 ? 'green' : stat.completionRate >= 80 ? 'yellow' : 'red';
+                    return (
+                      <Box key={stat.assignee}>
+                        <Group justify="space-between" mb={4}>
+                          <Text size="sm" fw={500} style={{ width: 80 }}>{stat.assignee}</Text>
+                          <Group gap="lg">
+                            <Text size="xs" c="dimmed">
+                              预计 <Text component="span" fw={500}>{stat.estimatedWorkload}</Text> 天
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                              实际 <Text component="span" fw={500}>{stat.actualWorkload}</Text> 天
+                            </Text>
+                            <Text size="xs" fw={500} c={rateColor}>
+                              {stat.completionRate}%
+                              {stat.completionRate > 100 && ' ⚠️'}
+                            </Text>
+                          </Group>
+                        </Group>
+                        <Group align="center" gap="xs">
+                          <Progress
+                            value={(stat.estimatedWorkload / maxWorkload) * 100}
+                            color="gray"
+                            size="sm"
+                            style={{ flex: 1 }}
+                          />
+                          <Progress
+                            value={(stat.actualWorkload / maxWorkload) * 100}
+                            color={rateColor}
+                            size="sm"
+                            style={{ flex: 1 }}
+                          />
+                        </Group>
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Paper>
+            </Box>
+          )}
+
+          {/* 团队整体统计 */}
+          {summary.totalTasks > 0 && (
+            <Box mb="lg">
+              <Text size="lg" fw={500} mb="md">团队工作量总览</Text>
+              <Paper p="md" withBorder radius="md">
+                <SimpleGrid cols={{ base: 2, sm: 4 }}>
+                  <Box>
+                    <Text size="sm" c="dimmed">总预计工作量</Text>
+                    <Text size="lg" fw={700}>{summary.totalEstimatedWorkload} 人天</Text>
+                  </Box>
+                  <Box>
+                    <Text size="sm" c="dimmed">总实际工作量</Text>
+                    <Text size="lg" fw={700}>{summary.totalActualWorkload} 人天</Text>
+                  </Box>
+                  <Box>
+                    <Text size="sm" c="dimmed">本周投入</Text>
+                    <Text size="lg" fw={700} c="blue">{summary.totalWeeklyWorkload} 人天</Text>
+                  </Box>
+                  <Box>
+                    <Text size="sm" c="dimmed">团队完成率</Text>
+                    <Group gap="xs">
+                      <Text size="lg" fw={700} c={teamCompletionRate >= 100 ? 'green' : teamCompletionRate >= 80 ? 'yellow' : 'red'}>
+                        {teamCompletionRate}%
+                      </Text>
+                    </Group>
+                  </Box>
+                </SimpleGrid>
+                <Box mt="md">
+                  <Progress
+                    value={Math.min(teamCompletionRate, 100)}
+                    color={teamCompletionRate >= 100 ? 'green' : teamCompletionRate >= 80 ? 'yellow' : 'red'}
+                    size="lg"
+                    radius="xl"
+                  />
+                </Box>
+                {assigneeStats.length > 0 && (
+                  <Text size="sm" c="dimmed" mt="sm">
+                    人均本周投入：{(summary.totalWeeklyWorkload / assigneeStats.length).toFixed(1)} 人天
+                  </Text>
+                )}
+              </Paper>
             </Box>
           )}
 

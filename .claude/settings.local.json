@@ -4,7 +4,16 @@
       "Bash(yarn outdated:*)",
       "Bash(yarn install:*)",
       "Bash(npm install:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(find /d/Code/work-report-generator/FE/src -type f \\\\\\(-name *.ts -o -name *.tsx \\\\\\))",
+      "Bash(sqlite3 /d/Code/work-report-generator/BE/work-report.db \".schema\")",
+      "Bash(curl:*)",
+      "Bash(netstat -ano)",
+      "Bash(findstr 3001)",
+      "Bash(taskkill:*)",
+      "Bash(kill 25520)",
+      "Bash(cmd.exe //c \"taskkill //F //PID 25520\")",
+      "Bash(powershell.exe -Command \"Stop-Process -Id 25520 -Force\")"
     ]
   }
 }

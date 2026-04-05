@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task } from './entities/task.entity';
 import { CreateTaskDto, UpdateTaskDto, QueryTaskDto } from './dto/task.dto';
+import { User, UserRole } from '../auth/entities/user.entity';
 
 @Injectable()
 export class TaskService {
@@ -11,13 +12,25 @@ export class TaskService {
     private taskRepository: Repository<Task>,
   ) {}
 
-  async create(createDto: CreateTaskDto): Promise<Task> {
+  async create(createDto: CreateTaskDto, currentUser: User): Promise<Task> {
+    // 为任务关联用户ID
+    if (!createDto.userId && currentUser) {
+      createDto.userId = currentUser.id.toString();
+    }
+    // 自动填充负责人为当前用户名（普通用户不可修改）
+    if (!createDto.assignee && currentUser) {
+      createDto.assignee = currentUser.username;
+    }
     const task = this.taskRepository.create(createDto);
     return this.taskRepository.save(task);
   }
 
-  async findAll(query: QueryTaskDto): Promise<Task[]> {
+  async findAll(query: QueryTaskDto, currentUser?: User): Promise<Task[]> {
     const where: any = {};
+
+    // 所有登录用户都可以查看所有任务
+    // 权限控制只在编辑/删除时生效
+
     if (query.year) where.year = query.year;
     if (query.weekNumber) where.weekNumber = query.weekNumber;
     if (query.project) where.project = query.project;
@@ -36,14 +49,26 @@ export class TaskService {
     return task;
   }
 
-  async update(id: number, updateDto: UpdateTaskDto): Promise<Task> {
+  async update(id: number, updateDto: UpdateTaskDto, currentUser: User): Promise<Task> {
     const task = await this.findOne(id);
+
+    // 权限检查
+    if (currentUser.role === UserRole.USER && task.userId !== currentUser.id.toString()) {
+      throw new ForbiddenException('你只能修改自己的任务');
+    }
+
     Object.assign(task, updateDto);
     return this.taskRepository.save(task);
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number, currentUser: User): Promise<void> {
     const task = await this.findOne(id);
+
+    // 权限检查
+    if (currentUser.role === UserRole.USER && task.userId !== currentUser.id.toString()) {
+      throw new ForbiddenException('你只能删除自己的任务');
+    }
+
     await this.taskRepository.remove(task);
   }
 

@@ -1,12 +1,17 @@
-import { useState } from 'react';
-import { TextInput, Textarea, NumberInput, Button, Group, Stack, SimpleGrid, Text } from '@mantine/core';
+import { useState, useEffect } from 'react';
+import { TextInput, Textarea, NumberInput, Button, Group, Stack, SimpleGrid, Text, Select } from '@mantine/core';
 import type { CreateTaskDto, Task } from '../../types/task';
+import { UserRole, type User } from '../../types/user';
+import type { Project } from '../../services/project.api';
 
 interface TaskFormProps {
   onSubmit: (dto: CreateTaskDto) => Promise<void>;
   onCancel?: () => void;
   initialData?: Task;
   isEdit?: boolean;
+  currentUser?: { id: number; username: string; role: UserRole } | null;
+  users?: User[];
+  projects?: Project[];
 }
 
 interface FormErrors {
@@ -35,9 +40,22 @@ function isValidUrl(url: string): boolean {
   }
 }
 
-export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormProps) {
+export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser, users, projects }: TaskFormProps) {
+  // 普通用户创建任务时，负责人默认为当前用户且不可修改
+  const isRegularUser = currentUser?.role === UserRole.USER;
+  const defaultAssignee = !isEdit && isRegularUser ? currentUser?.username || '' : initialData?.assignee || '';
+
+  // 生成责任人下拉选项（排除超管）
+  const assigneeOptions = (users || [])
+    .filter(u => u.role !== UserRole.SUPER_ADMIN)
+    .map(u => ({ value: u.username, label: u.username }));
+
+  // 生成项目下拉选项
+  const projectOptions = (projects || [])
+    .map(p => ({ value: p.name, label: p.name }));
+
   const [project, setProject] = useState(initialData?.project || '');
-  const [assignee, setAssignee] = useState(initialData?.assignee || '');
+  const [assignee, setAssignee] = useState(defaultAssignee);
   const [usDts, setUsDts] = useState(initialData?.usDts || '');
   const [usDtsLink, setUsDtsLink] = useState(initialData?.usDtsLink || '');
   const [taskDetail, setTaskDetail] = useState(initialData?.taskDetail || '');
@@ -190,21 +208,26 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit }: TaskFormPr
       <Stack gap="md">
         {/* 第一行：项目 + 责任人（必填） */}
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <TextInput
+          <Select
             label="项目"
-            placeholder="请输入项目名称"
+            placeholder="请选择项目"
+            data={projectOptions}
             value={project}
-            onChange={(e) => { setProject(e.target.value); clearError('project'); }}
+            onChange={(value) => { setProject(value || ''); clearError('project'); }}
             required
             error={errors.project}
+            searchable
           />
-          <TextInput
+          <Select
             label="责任人"
-            placeholder="请输入责任人"
+            placeholder="请选择责任人"
+            data={assigneeOptions}
             value={assignee}
-            onChange={(e) => { setAssignee(e.target.value); clearError('assignee'); }}
+            onChange={(value) => { setAssignee(value || ''); clearError('assignee'); }}
             required
             error={errors.assignee}
+            searchable
+            disabled={isRegularUser && !isEdit}
           />
         </SimpleGrid>
 
