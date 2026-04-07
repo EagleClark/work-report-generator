@@ -44,9 +44,18 @@ function isValidUrl(url: string): boolean {
 }
 
 export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser, users, projects, defaultYear, defaultWeekNumber }: TaskFormProps) {
-  // 普通用户创建任务时，负责人默认为当前用户且不可修改
+  // 普通用户和管理员创建任务时，负责人默认为当前用户；超管不默认选中
   const isRegularUser = currentUser?.role === UserRole.USER;
-  const defaultAssignee = !isEdit && isRegularUser && currentUser?.username ? currentUser.username : (initialData?.assignee || '');
+  const isAdmin = currentUser?.role === UserRole.ADMIN;
+
+  // 编辑模式使用原数据，新增模式下：普通用户和管理员默认选中自己，超管不选中
+  let defaultAssignee = initialData?.assignee || '';
+  if (!isEdit) {
+    if (isRegularUser || isAdmin) {
+      defaultAssignee = currentUser?.username || '';
+    }
+    // 超管不默认选中任何人
+  }
 
   // 生成责任人下拉选项（排除超管，确保当前用户在选项中）
   const assigneeOptions = (users || [])
