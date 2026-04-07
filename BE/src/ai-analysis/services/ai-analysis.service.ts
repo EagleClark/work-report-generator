@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AIAnalysis } from '../entities/ai-analysis.entity';
@@ -6,9 +6,24 @@ import { CreateAnalysisDto, QueryAnalysisDto } from '../dto/create-analysis.dto'
 import { OpenAIProvider } from './openai.provider';
 import { TaskService } from '../../work-report/task.service';
 
+export interface GeneratingStatus {
+  isGenerating: boolean;
+  year: number | null;
+  weekNumber: number | null;
+  partialContent: string;
+}
+
 @Injectable()
 export class AIAnalysisService {
   private readonly logger = new Logger(AIAnalysisService.name);
+
+  // 存储正在生成的状态
+  private generatingStatus: GeneratingStatus = {
+    isGenerating: false,
+    year: null,
+    weekNumber: null,
+    partialContent: '',
+  };
 
   constructor(
     @InjectRepository(AIAnalysis)
@@ -16,6 +31,11 @@ export class AIAnalysisService {
     private openaiProvider: OpenAIProvider,
     private taskService: TaskService,
   ) {}
+
+  // 获取当前生成状态
+  getGeneratingStatus(): GeneratingStatus {
+    return { ...this.generatingStatus };
+  }
 
   async findByYearAndWeek(year: number, weekNumber: number): Promise<AIAnalysis | null> {
     return this.analysisRepository.findOne({
@@ -101,6 +121,19 @@ export class AIAnalysisService {
   async generateAnalysisStream(dto: CreateAnalysisDto, onChunk: (chunk: string) => void): Promise<AIAnalysis> {
     const { year, weekNumber, userPrompt } = dto;
 
+    // 检查是否正在生成中
+    if (this.generatingStatus.isGenerating) {
+      throw new ConflictException('正在生成分析中，请稍后再试');
+    }
+
+    // 设置生成状态
+    this.generatingStatus = {
+      isGenerating: true,
+      year,
+      weekNumber,
+      partialContent: '',
+    };
+
     // 删除已有分析
     const existing = await this.findByYearAndWeek(year, weekNumber);
     if (existing) {
@@ -128,8 +161,14 @@ export class AIAnalysisService {
     };
 
     try {
+      // 创建一个包装的回调函数来更新partialContent
+      const wrappedOnChunk = (chunk: string) => {
+        this.generatingStatus.partialContent += chunk;
+        onChunk(chunk);
+      };
+
       // 调用 AI 服务流式生成
-      const response = await this.openaiProvider.analyzeStream(request, onChunk);
+      const response = await this.openaiProvider.analyzeStream(request, wrappedOnChunk);
 
       // 保存分析结果
       const analysis = this.analysisRepository.create({
@@ -142,8 +181,26 @@ export class AIAnalysisService {
         metadata: response.metadata,
       });
 
-      return this.analysisRepository.save(analysis);
+      const savedAnalysis = await this.analysisRepository.save(analysis);
+
+      // 清除生成状态
+      this.generatingStatus = {
+        isGenerating: false,
+        year: null,
+        weekNumber: null,
+        partialContent: '',
+      };
+
+      return savedAnalysis;
     } catch (error) {
+      // 清除生成状态
+      this.generatingStatus = {
+        isGenerating: false,
+        year: null,
+        weekNumber: null,
+        partialContent: '',
+      };
+
       this.logger.error(`Failed to generate analysis stream: ${error.message}`);
       throw error;
     }

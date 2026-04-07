@@ -9,6 +9,7 @@ import { theme } from './theme';
 import { AppShellLayout } from './components/AppShellLayout/AppShellLayout';
 import { AuthProvider } from './context/AuthContext';
 import { WeekProvider } from './context/WeekContext';
+import { AIAnalysisProvider } from './context/AIAnalysisContext';
 
 export default function App() {
   return (
@@ -16,11 +17,13 @@ export default function App() {
       <Notifications position="top-center" />
       <AuthProvider>
         <WeekProvider>
-          <BrowserRouter>
-            <AppShellLayout>
-              <Router />
-            </AppShellLayout>
-          </BrowserRouter>
+          <AIAnalysisProvider>
+            <BrowserRouter>
+              <AppShellLayout>
+                <Router />
+              </AppShellLayout>
+            </BrowserRouter>
+          </AIAnalysisProvider>
         </WeekProvider>
       </AuthProvider>
     </MantineProvider>

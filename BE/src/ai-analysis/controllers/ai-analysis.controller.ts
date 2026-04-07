@@ -30,6 +30,12 @@ export class AIAnalysisController {
     );
   }
 
+  @Get('generating-status')
+  @Public()
+  getGeneratingStatus() {
+    return this.aiAnalysisService.getGeneratingStatus();
+  }
+
   @Post('generate')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
