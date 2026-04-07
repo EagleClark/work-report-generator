@@ -45,7 +45,7 @@ npm install
 
 ### 配置环境变量
 
-在 `BE/` 目录下创建 `.env` 文件：
+**后端配置** - 在 `BE/` 目录下创建 `.env` 文件：
 
 ```env
 # AI 模型配置（支持 OpenAI 及兼容服务）
@@ -54,6 +54,21 @@ AI_BASE_URL=https://api.openai.com/v1
 AI_MODEL=gpt-4o-mini
 AI_EXTRA_HEADERS={}
 ```
+
+**前端配置** - 可在 `FE/` 目录下创建环境变量文件：
+
+- `.env.development` - 开发环境配置（已存在默认值）
+- `.env.production` - 生产环境配置（已存在默认值）
+- `.env.local` - 本地自定义配置（会覆盖默认值，不会被 Git 提交）
+
+```env
+# 后端 API 地址
+VITE_API_BASE_URL=http://localhost:3001/api
+```
+
+| 配置项 | 说明 | 开发环境默认值 | 生产环境默认值 |
+|--------|------|----------------|----------------|
+| `VITE_API_BASE_URL` | 后端 API 地址 | `http://localhost:3001/api` | `/api`（同域名部署） |
 
 ### 启动开发服务器
 
