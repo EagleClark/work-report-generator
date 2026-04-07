@@ -130,7 +130,7 @@ export function ProjectManagementPage() {
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th style={{ width: 80 }}>ID</Table.Th>
+            <Table.Th style={{ width: 80 }}>序号</Table.Th>
             <Table.Th style={{ width: 200 }}>项目名称</Table.Th>
             <Table.Th>项目描述</Table.Th>
             <Table.Th style={{ width: 180 }}>创建时间</Table.Th>
@@ -145,9 +145,9 @@ export function ProjectManagementPage() {
               </Table.Td>
             </Table.Tr>
           ) : (
-            projects.map((project) => (
+            projects.map((project, index) => (
               <Table.Tr key={project.id}>
-                <Table.Td>{project.id}</Table.Td>
+                <Table.Td>{index + 1}</Table.Td>
                 <Table.Td>{project.name}</Table.Td>
                 <Table.Td>{project.description || '-'}</Table.Td>
                 <Table.Td>{new Date(project.createdAt).toLocaleString()}</Table.Td>

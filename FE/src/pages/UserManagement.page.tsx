@@ -124,7 +124,7 @@ export function UserManagementPage() {
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th style={{ width: 80 }}>ID</Table.Th>
+            <Table.Th style={{ width: 80 }}>序号</Table.Th>
             <Table.Th style={{ width: 200 }}>用户名</Table.Th>
             <Table.Th style={{ width: 150 }}>角色</Table.Th>
             <Table.Th>创建时间</Table.Th>
@@ -132,9 +132,9 @@ export function UserManagementPage() {
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {users.map((user) => (
+          {users.map((user, index) => (
             <Table.Tr key={user.id}>
-              <Table.Td>{user.id}</Table.Td>
+              <Table.Td>{index + 1}</Table.Td>
               <Table.Td>{user.username}</Table.Td>
               <Table.Td>
                 <Badge color={getRoleColor(user.role)}>{getRoleLabel(user.role)}</Badge>
