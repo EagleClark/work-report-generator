@@ -94,7 +94,7 @@ export const taskHandlers = [
 
   // 创建任务
   http.post(`${API_BASE}/tasks`, async ({ request }) => {
-    const body = await request.json();
+    const body = await request.json() as Record<string, unknown>;
     const newTask = {
       id: mockTasks.length + 1,
       ...body,
@@ -110,7 +110,7 @@ export const taskHandlers = [
     const id = Number(params.id);
     const index = mockTasks.findIndex(t => t.id === id);
     if (index !== -1) {
-      const body = await request.json();
+      const body = await request.json() as Record<string, unknown>;
       mockTasks[index] = {
         ...mockTasks[index],
         ...body,
