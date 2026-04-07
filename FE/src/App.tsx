@@ -16,15 +16,15 @@ export default function App() {
     <MantineProvider theme={theme} defaultColorScheme="auto">
       <Notifications position="top-center" />
       <AuthProvider>
-        <WeekProvider>
-          <AIAnalysisProvider>
-            <BrowserRouter>
+        <BrowserRouter>
+          <WeekProvider>
+            <AIAnalysisProvider>
               <AppShellLayout>
                 <Router />
               </AppShellLayout>
-            </BrowserRouter>
-          </AIAnalysisProvider>
-        </WeekProvider>
+            </AIAnalysisProvider>
+          </WeekProvider>
+        </BrowserRouter>
       </AuthProvider>
     </MantineProvider>
   );

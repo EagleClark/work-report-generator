@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 interface WeekContextType {
   year: number;
@@ -51,8 +52,48 @@ export function getWeekDateRange(year: number, week: number): string {
 }
 
 export function WeekProvider({ children }: { children: ReactNode }) {
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [weekNumber, setWeekNumber] = useState(getCurrentWeekNumber());
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // 从 URL 参数读取初始值，如果没有则使用当前年周
+  const urlYear = searchParams.get('year');
+  const urlWeek = searchParams.get('week');
+
+  const defaultYear = new Date().getFullYear();
+  const defaultWeek = getCurrentWeekNumber();
+
+  const initialYear = urlYear ? parseInt(urlYear, 10) : defaultYear;
+  const initialWeek = urlWeek ? parseInt(urlWeek, 10) : defaultWeek;
+
+  const [year, setYearState] = useState(initialYear);
+  const [weekNumber, setWeekNumberState] = useState(initialWeek);
+
+  // 初始化时如果 URL 没有参数，自动添加
+  useEffect(() => {
+    if (!urlYear || !urlWeek) {
+      const params = new URLSearchParams(searchParams);
+      params.set('year', String(initialYear));
+      params.set('week', String(initialWeek));
+      setSearchParams(params, { replace: true });
+    }
+  }, []);
+
+  // 更新 URL 参数
+  const updateUrlParams = (newYear: number, newWeek: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('year', String(newYear));
+    params.set('week', String(newWeek));
+    setSearchParams(params, { replace: true });
+  };
+
+  const setYear = (newYear: number) => {
+    setYearState(newYear);
+    updateUrlParams(newYear, weekNumber);
+  };
+
+  const setWeekNumber = (newWeek: number) => {
+    setWeekNumberState(newWeek);
+    updateUrlParams(year, newWeek);
+  };
 
   return (
     <WeekContext.Provider value={{ year, weekNumber, setYear, setWeekNumber }}>

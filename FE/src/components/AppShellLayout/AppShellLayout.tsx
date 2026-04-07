@@ -69,7 +69,7 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate(`/login?year=${year}&week=${weekNumber}`);
   };
 
   const handlePasswordChange = async () => {
@@ -107,6 +107,11 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
   const canManageUsers = hasRole([UserRole.ADMIN, UserRole.SUPER_ADMIN]);
 
   const isLoginPage = location.pathname === '/login';
+
+  // 生成带年周参数的链接
+  const getLinkWithWeekParams = (path: string): string => {
+    return `${path}?year=${year}&week=${weekNumber}`;
+  };
 
   return (
     <AppShell
@@ -148,7 +153,7 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
               <Button
                 variant={location.pathname === '/' ? 'filled' : 'subtle'}
                 component={Link}
-                to="/"
+                to={getLinkWithWeekParams('/')}
               >
                 任务管理
               </Button>
@@ -156,7 +161,7 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
             <Button
               variant={location.pathname === '/weekly-report' ? 'filled' : 'subtle'}
               component={Link}
-              to="/weekly-report"
+              to={getLinkWithWeekParams('/weekly-report')}
             >
               周报汇总
             </Button>
@@ -179,12 +184,12 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
                     </Menu.Item>
                   )}
                   {canManageUsers && (
-                    <Menu.Item component={Link} to="/projects">
+                    <Menu.Item component={Link} to={getLinkWithWeekParams('/projects')}>
                       项目管理
                     </Menu.Item>
                   )}
                   {canManageUsers && (
-                    <Menu.Item component={Link} to="/users">
+                    <Menu.Item component={Link} to={getLinkWithWeekParams('/users')}>
                       用户管理
                     </Menu.Item>
                   )}
@@ -195,7 +200,7 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
                 </Menu.Dropdown>
               </Menu>
             ) : (
-              <Button variant="subtle" component={Link} to="/login">
+              <Button variant="subtle" component={Link} to={getLinkWithWeekParams('/login')}>
                 登录
               </Button>
             )}
