@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Res } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Res, HttpException, HttpStatus } from '@nestjs/common';
 import { Response } from 'express';
 import { AIAnalysisService } from '../services/ai-analysis.service';
 import { CreateAnalysisDto, QueryAnalysisDto } from '../dto/create-analysis.dto';
@@ -47,6 +47,17 @@ export class AIAnalysisController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async generateStream(@Body() dto: CreateAnalysisDto, @Res() res: Response) {
+    // 先检查是否正在生成中（在发送headers之前）
+    const status = this.aiAnalysisService.getGeneratingStatus();
+    if (status.isGenerating) {
+      res.status(HttpStatus.CONFLICT).json({
+        statusCode: HttpStatus.CONFLICT,
+        message: '正在生成分析中，请稍后再试',
+        error: 'Conflict',
+      });
+      return;
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -58,7 +69,14 @@ export class AIAnalysisController {
 
       res.end();
     } catch (error) {
-      res.write(`生成失败: ${error.message}`);
+      // 发送结构化的错误信息，前端可以解析
+      const errorResponse = {
+        success: false,
+        error: true,
+        message: error.message || '生成失败',
+        details: error.response?.data?.message || error.stack?.split('\n')[0] || '',
+      };
+      res.write(`\n\n__ERROR__: ${JSON.stringify(errorResponse)}`);
       res.end();
     }
   }

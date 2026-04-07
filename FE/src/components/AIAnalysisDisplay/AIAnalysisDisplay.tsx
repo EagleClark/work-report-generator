@@ -175,6 +175,23 @@ export function AIAnalysisDisplay({ year, weekNumber }: AIAnalysisDisplayProps) 
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
+
+        // 检查是否是错误响应
+        if (chunk.includes('__ERROR__:')) {
+          const errorMatch = chunk.match(/__ERROR__:\s*(\{[\s\S]*\})/);
+          if (errorMatch) {
+            try {
+              const errorData = JSON.parse(errorMatch[1]);
+              throw new Error(errorData.message || '生成失败');
+            } catch (parseError: any) {
+              if (parseError.message && !parseError.message.includes('JSON')) {
+                throw parseError;
+              }
+              throw new Error('生成失败');
+            }
+          }
+        }
+
         appendLocalStreamContent(chunk);
         setStreamContent(prev => prev + chunk);
       }
