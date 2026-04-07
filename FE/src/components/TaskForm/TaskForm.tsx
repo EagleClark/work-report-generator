@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TextInput, Textarea, NumberInput, Button, Group, Stack, SimpleGrid, Text, Select } from '@mantine/core';
+import { TextInput, Textarea, NumberInput, Button, Group, Stack, SimpleGrid, Text, Select, Alert } from '@mantine/core';
 import type { CreateTaskDto, Task } from '../../types/task';
 import { UserRole, type User } from '../../types/user';
 import type { Project } from '../../services/project.api';
@@ -84,6 +84,10 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
+  // 用于提醒同步修改实际工作量
+  const [weeklyWorkloadModified, setWeeklyWorkloadModified] = useState(false);
+  const [initialActualWorkload, setInitialActualWorkload] = useState(initialData?.actualWorkload || 0);
+
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
 
@@ -124,7 +128,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
         if (!actualWorkload || actualWorkload <= 0) {
           newErrors.actualWorkload = '进度不为0时必须填写实际工作量';
         }
-        if (!weeklyWorkload || weeklyWorkload <= 0) {
+        if (weeklyWorkload === undefined || weeklyWorkload === null) {
           newErrors.weeklyWorkload = '进度不为0时必须填写本周工作量';
         }
       }
@@ -190,8 +194,8 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
       // 编辑时才添加进度和实际工作相关字段
       if (isEdit) {
         submitData.progress = progress;
-        if (actualWorkload) submitData.actualWorkload = actualWorkload;
-        if (weeklyWorkload) submitData.weeklyWorkload = weeklyWorkload;
+        if (actualWorkload !== undefined && actualWorkload !== null) submitData.actualWorkload = actualWorkload;
+        if (weeklyWorkload !== undefined && weeklyWorkload !== null) submitData.weeklyWorkload = weeklyWorkload;
         if (actualStartDate && actualStartDate.trim()) submitData.actualStartDate = actualStartDate;
         if (actualEndDate && actualEndDate.trim()) submitData.actualEndDate = actualEndDate;
       }
@@ -361,26 +365,43 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
 
         {/* 第六行：实际工作量 + 本周工作量（编辑时显示） */}
         {isEdit && (
-          <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <NumberInput
-              label="实际工作量"
-              suffix=" 人天"
-              value={actualWorkload}
-              onChange={(val) => { setActualWorkload(Number(val) || 0); clearError('actualWorkload'); clearError('weeklyWorkload'); }}
-              min={0}
-              error={errors.actualWorkload}
-              description={progress > 0 ? '进度不为0时必填' : ''}
-            />
-            <NumberInput
-              label="本周工作量"
-              suffix=" 人天"
-              value={weeklyWorkload}
-              onChange={(val) => { setWeeklyWorkload(Number(val) || 0); clearError('weeklyWorkload'); }}
-              min={0}
-              error={errors.weeklyWorkload}
-              description={progress > 0 ? '进度不为0时必填' : ''}
-            />
-          </SimpleGrid>
+          <>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              <NumberInput
+                label="实际工作量"
+                suffix=" 人天"
+                value={actualWorkload}
+                onChange={(val) => {
+                  setActualWorkload(Number(val) || 0);
+                  clearError('actualWorkload');
+                  clearError('weeklyWorkload');
+                  setWeeklyWorkloadModified(false);
+                }}
+                min={0}
+                error={errors.actualWorkload}
+                description={progress > 0 ? '进度不为0时必填' : ''}
+              />
+              <NumberInput
+                label="本周工作量"
+                suffix=" 人天"
+                value={weeklyWorkload}
+                onChange={(val) => {
+                  setWeeklyWorkload(Number(val) || 0);
+                  clearError('weeklyWorkload');
+                  setWeeklyWorkloadModified(true);
+                }}
+                min={0}
+                error={errors.weeklyWorkload}
+                description={progress > 0 ? '进度不为0时必填（可为0）' : ''}
+              />
+            </SimpleGrid>
+            {/* 提醒同步修改实际工作量 */}
+            {weeklyWorkloadModified && actualWorkload === initialActualWorkload && (
+              <Alert color="yellow" variant="light" title="提示">
+                本周工作量已修改，请确认是否需要同步更新实际工作量
+              </Alert>
+            )}
+          </>
         )}
 
         {/* 第七行：实际开始时间 + 实际结束时间（编辑时显示） */}
