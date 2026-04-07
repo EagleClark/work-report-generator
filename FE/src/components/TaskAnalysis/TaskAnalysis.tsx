@@ -5,6 +5,12 @@ import {
 import { IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import type { Task } from '../../types/task';
 
+// 格式化数字，最多保留三位小数
+function formatNumber(num: number): string {
+  const rounded = Math.round(num * 1000) / 1000;
+  return rounded.toString();
+}
+
 interface TaskAnalysisProps {
   tasks: Task[];
 }
@@ -154,10 +160,10 @@ export function TaskAnalysis({ tasks }: TaskAnalysisProps) {
                       <Badge size="xs" variant="light">{item.taskCount} 任务</Badge>
                     </Group>
                     <Group gap="md">
-                      <Text size="sm" c="dimmed">计划 {item.estimatedWorkload.toFixed(1)}</Text>
-                      <Text size="sm" c="dimmed">实际 {item.actualWorkload.toFixed(1)}</Text>
+                      <Text size="sm" c="dimmed">计划 {formatNumber(item.estimatedWorkload)}</Text>
+                      <Text size="sm" c="dimmed">实际 {formatNumber(item.actualWorkload)}</Text>
                       <Text size="sm" fw={600} c={color}>
-                        偏差 {item.deviation > 0 ? '+' : ''}{item.deviation.toFixed(1)} ({item.deviationRate > 0 ? '+' : ''}{item.deviationRate.toFixed(1)}%)
+                        偏差 {item.deviation > 0 ? '+' : ''}{formatNumber(item.deviation)} ({item.deviationRate > 0 ? '+' : ''}{formatNumber(item.deviationRate)}%)
                       </Text>
                       <Badge size="sm" color={color} variant="light">{label}</Badge>
                     </Group>
@@ -187,11 +193,11 @@ export function TaskAnalysis({ tasks }: TaskAnalysisProps) {
                                   <Text lineClamp={1} size="xs">{task.taskDetail}</Text>
                                 </Table.Td>
                                 <Table.Td>{task.assignee}</Table.Td>
-                                <Table.Td>{task.estimatedWorkload.toFixed(1)}</Table.Td>
-                                <Table.Td>{task.actualWorkload.toFixed(1)}</Table.Td>
+                                <Table.Td>{formatNumber(task.estimatedWorkload)}</Table.Td>
+                                <Table.Td>{formatNumber(task.actualWorkload)}</Table.Td>
                                 <Table.Td>
                                   <Text fw={500} c={taskColor}>
-                                    {task.deviation > 0 ? '+' : ''}{task.deviation.toFixed(1)} ({task.deviationRate > 0 ? '+' : ''}{task.deviationRate.toFixed(1)}%)
+                                    {task.deviation > 0 ? '+' : ''}{formatNumber(task.deviation)} ({task.deviationRate > 0 ? '+' : ''}{formatNumber(task.deviationRate)}%)
                                   </Text>
                                 </Table.Td>
                                 <Table.Td>
