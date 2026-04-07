@@ -253,6 +253,9 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
         <Button color="orange" onClick={openCopyModal}>
           复制上周任务
         </Button>
+        <Button color="gray" onClick={fetchTasks} loading={loading}>
+          刷新
+        </Button>
       </Group>
 
       <ScrollArea>
