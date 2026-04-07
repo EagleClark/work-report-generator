@@ -1,12 +1,11 @@
 import {
-  Modal, Text, Stack, Title, Table, Box, Button, Group
+  Modal, Text, Stack, Title, Table, Box, Button, Group, Badge
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 
 interface HelpModalProps {
   opened: boolean;
   onClose: () => void;
-  showMechanisms?: boolean; // 是否显示操作机制说明（任务管理页需要）
 }
 
 // 字段说明数据
@@ -21,7 +20,7 @@ const fieldDescriptions = [
   { field: '本周实际', description: '本周实际投入的工作量' },
   { field: '计划时间', description: '计划开始和结束日期' },
   { field: '实际时间', description: '实际开始和结束日期（进度100%时必填）' },
-  { field: '责任人', description: '任务负责人，普通用户默认为当前用户' },
+  { field: '责任人', description: '任务负责人，普通用户和管理员默认为当前用户' },
   { field: '备注', description: '其他说明信息，最多500字' },
 ];
 
@@ -45,16 +44,56 @@ const mechanismDescriptions = [
   },
 ];
 
-export function HelpModal({ opened, onClose, showMechanisms = true }: HelpModalProps) {
+// AI分析说明
+const aiAnalysisDescriptions = [
+  {
+    title: '功能介绍',
+    content: 'AI智能分析功能基于本周任务数据，自动生成周报分析报告，包括任务完成情况、工作量分析、风险提示等。',
+  },
+  {
+    title: '生成分析',
+    content: '点击"生成AI分析"按钮，可选择填写自定义提示词来引导分析方向。AI将根据本周任务数据流式生成分析报告。',
+  },
+  {
+    title: '重新生成',
+    content: '点击刷新按钮可以重新生成分析报告，会覆盖之前的分析内容。生成过程中无法重复生成。',
+  },
+  {
+    title: '权限说明',
+    content: '所有用户都可以查看AI分析报告；仅管理员和超管可以生成、重新生成和删除分析报告。',
+  },
+  {
+    title: '自定义提示词',
+    content: '可选填写的提示词，用于引导AI关注特定方面。例如："重点关注延期任务的风险分析"或"分析各项目的工作量分布情况"。',
+  },
+];
+
+export function HelpModal({ opened, onClose }: HelpModalProps) {
   return (
     <Modal
       opened={opened}
       onClose={onClose}
       title={<Title order={4}>使用帮助</Title>}
-      size="lg"
+      size="xl"
       centered
     >
       <Stack gap="md">
+        {/* AI分析说明 */}
+        <Box>
+          <Group gap="xs" mb="sm">
+            <Title order={5}>AI智能分析</Title>
+            <Badge size="sm" color="violet" variant="light">亮点功能</Badge>
+          </Group>
+          <Stack gap="sm">
+            {aiAnalysisDescriptions.map((item) => (
+              <Box key={item.title}>
+                <Text fw={500} size="sm">{item.title}</Text>
+                <Text size="sm" c="dimmed">{item.content}</Text>
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+
         {/* 字段说明 */}
         <Box>
           <Title order={5} mb="sm">表格字段说明</Title>
@@ -76,20 +115,18 @@ export function HelpModal({ opened, onClose, showMechanisms = true }: HelpModalP
           </Table>
         </Box>
 
-        {/* 操作机制说明（仅任务管理页显示） */}
-        {showMechanisms && (
-          <Box>
-            <Title order={5} mb="sm">操作机制说明</Title>
-            <Stack gap="sm">
-              {mechanismDescriptions.map((item) => (
-                <Box key={item.title}>
-                  <Text fw={500} size="sm">{item.title}</Text>
-                  <Text size="sm" c="dimmed">{item.content}</Text>
-                </Box>
-              ))}
-            </Stack>
-          </Box>
-        )}
+        {/* 操作机制说明 */}
+        <Box>
+          <Title order={5} mb="sm">操作机制说明</Title>
+          <Stack gap="sm">
+            {mechanismDescriptions.map((item) => (
+              <Box key={item.title}>
+                <Text fw={500} size="sm">{item.title}</Text>
+                <Text size="sm" c="dimmed">{item.content}</Text>
+              </Box>
+            ))}
+          </Stack>
+        </Box>
 
         <Group justify="flex-end" mt="md">
           <Button onClick={onClose}>我知道了</Button>
@@ -100,7 +137,7 @@ export function HelpModal({ opened, onClose, showMechanisms = true }: HelpModalP
 }
 
 // 带按钮的帮助组件
-export function HelpButton({ showMechanisms = true }: { showMechanisms?: boolean }) {
+export function HelpButton() {
   const [opened, { open, close }] = useDisclosure(false);
 
   return (
@@ -108,7 +145,7 @@ export function HelpButton({ showMechanisms = true }: { showMechanisms?: boolean
       <Button variant="subtle" size="compact-sm" onClick={open}>
         ❓ 帮助
       </Button>
-      <HelpModal opened={opened} onClose={close} showMechanisms={showMechanisms} />
+      <HelpModal opened={opened} onClose={close} />
     </>
   );
 }

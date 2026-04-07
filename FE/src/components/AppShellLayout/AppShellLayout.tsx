@@ -284,7 +284,7 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
       </Modal>
 
       {/* 帮助弹窗 */}
-      <HelpModal opened={helpModalOpened} onClose={closeHelpModal} showMechanisms={true} />
+      <HelpModal opened={helpModalOpened} onClose={closeHelpModal} />
     </AppShell>
   );
 }
