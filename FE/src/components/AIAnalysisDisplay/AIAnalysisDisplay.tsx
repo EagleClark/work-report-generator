@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  Paper, Text, Stack, Group, Badge, Button, ScrollArea, ActionIcon, Alert, Box, Loader
+  Paper, Text, Stack, Group, Badge, Button, ScrollArea, ActionIcon, Alert, Box, Loader, Modal
 } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconRefresh, IconTrash, IconSparkles } from '@tabler/icons-react';
 import type { AIAnalysis } from '../../types/ai-analysis';
@@ -28,6 +29,7 @@ export function AIAnalysisDisplay({ year, weekNumber }: AIAnalysisDisplayProps) 
   const [modalOpened, setModalOpened] = useState(false);
   const [generatingStatus, setGeneratingStatus] = useState<GeneratingStatus | null>(null);
   const [streamContent, setStreamContent] = useState('');
+  const [deleteConfirmOpened, { open: openDeleteConfirm, close: closeDeleteConfirm }] = useDisclosure(false);
   const { user, hasRole } = useAuth();
 
   // 本地流式内容
@@ -202,7 +204,11 @@ export function AIAnalysisDisplay({ year, weekNumber }: AIAnalysisDisplayProps) 
     }
   }, [year, weekNumber, setLocalStreamContent, appendLocalStreamContent]);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
+    openDeleteConfirm();
+  };
+
+  const handleDeleteConfirm = async () => {
     if (!analysis) return;
 
     try {
@@ -217,6 +223,7 @@ export function AIAnalysisDisplay({ year, weekNumber }: AIAnalysisDisplayProps) 
         color: 'green',
       });
       setAnalysis(null);
+      closeDeleteConfirm();
     } catch (error) {
       notifications.show({
         title: '删除失败',
@@ -387,6 +394,16 @@ export function AIAnalysisDisplay({ year, weekNumber }: AIAnalysisDisplayProps) 
         onClose={() => setModalOpened(false)}
         onGenerate={generateWithSSE}
       />
+
+      <Modal opened={deleteConfirmOpened} onClose={closeDeleteConfirm} title="确认删除">
+        <Stack>
+          <Text>确定要删除此 AI 分析吗？删除后无法恢复。</Text>
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={closeDeleteConfirm}>取消</Button>
+            <Button color="red" onClick={handleDeleteConfirm}>确认删除</Button>
+          </Group>
+        </Stack>
+      </Modal>
     </>
   );
 }
