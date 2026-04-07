@@ -106,12 +106,14 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
 
   const canManageUsers = hasRole([UserRole.ADMIN, UserRole.SUPER_ADMIN]);
 
+  const isLoginPage = location.pathname === '/login';
+
   return (
     <AppShell
       header={{ height: 60 }}
       padding="md"
     >
-      {isAuthenticated && (
+      {!isLoginPage && (
         <AppShell.Header>
           <Group h="100%" px="md" justify="space-between">
             <Group gap="md">
