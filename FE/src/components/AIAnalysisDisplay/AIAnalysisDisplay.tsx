@@ -27,6 +27,7 @@ export function AIAnalysisDisplay({ year, weekNumber }: AIAnalysisDisplayProps) 
 
   const fetchAnalysis = async () => {
     setLoading(true);
+    setAnalysis(null); // 清除旧数据，防止切换周时显示旧内容
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`/api/ai-analysis/current?year=${year}&weekNumber=${weekNumber}`, {
