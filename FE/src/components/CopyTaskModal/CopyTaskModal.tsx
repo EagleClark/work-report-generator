@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Modal, Text, Group, Button, Select, Stack, NumberInput,
-  Alert, Divider, List, Title, Box, Badge, SimpleGrid
+  Alert, Divider, Box, SimpleGrid
 } from '@mantine/core';
 import { taskApi } from '../../services/task.api';
 import type { User } from '../../types/user';
-import { CopyMode, type CopyTaskResult } from '../../types/task';
+import { CopyMode } from '../../types/task';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types/user';
@@ -57,7 +57,6 @@ export function CopyTaskModal({
   const [loading, setLoading] = useState(false);
   const [copyMode, setCopyMode] = useState<CopyMode>(CopyMode.SELF);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [result, setResult] = useState<CopyTaskResult | null>(null);
 
   // 目标周次（用户选择）
   const [targetYear, setTargetYear] = useState(new Date().getFullYear());
@@ -86,7 +85,6 @@ export function CopyTaskModal({
       };
 
       const copyResult = await taskApi.copyIncompleteTasks(copyDto);
-      setResult(copyResult);
 
       if (copyResult.copiedCount > 0) {
         notifications.show({
@@ -95,6 +93,7 @@ export function CopyTaskModal({
           color: 'green',
         });
         onSuccess();
+        handleClose();
       } else if (copyResult.skippedCount > 0) {
         notifications.show({
           title: '没有新任务',
@@ -120,7 +119,6 @@ export function CopyTaskModal({
   };
 
   const handleClose = () => {
-    setResult(null);
     setCopyMode(CopyMode.SELF);
     setSelectedUserId(null);
     setTargetYear(new Date().getFullYear());
@@ -140,128 +138,89 @@ export function CopyTaskModal({
       centered
     >
       <Stack gap="md">
-        {!result ? (
-          <>
-            <Alert variant="light" color="blue" icon="ℹ️">
-              <Text size="sm">
-                此功能将复制源周次中未完成的任务（进度小于100%）到目标周次。请确保源周次的任务状态已更新后再操作。
-              </Text>
-            </Alert>
+        <Alert variant="light" color="blue" icon="ℹ️">
+          <Text size="sm">
+            此功能将复制源周次中未完成的任务（进度小于100%）到目标周次。请确保源周次的任务状态已更新后再操作。
+          </Text>
+        </Alert>
 
-            <Alert variant="light" color="yellow" icon="⚠️">
-              <Text size="sm">
-                请谨慎操作：复制前请确认源周次工作状态已全部更新。重复的任务将自动跳过。
-              </Text>
-            </Alert>
+        <Alert variant="light" color="yellow" icon="⚠️">
+          <Text size="sm">
+            请谨慎操作：复制前请确认源周次工作状态已全部更新。重复的任务将自动跳过。
+          </Text>
+        </Alert>
 
-            <Divider label="周次选择" labelPosition="center" />
+        <Divider label="周次选择" labelPosition="center" />
 
-            <SimpleGrid cols={2}>
-              <Box>
-                <Text size="sm" fw={500} mb="xs">目标周次</Text>
-                <Group gap="xs">
-                  <NumberInput
-                    value={targetYear}
-                    onChange={(val) => setTargetYear(Number(val) || new Date().getFullYear())}
-                    min={2000}
-                    max={2100}
-                    style={{ width: 80 }}
-                  />
-                  <NumberInput
-                    value={targetWeek}
-                    onChange={(val) => setTargetWeek(Number(val) || 1)}
-                    min={1}
-                    max={53}
-                    style={{ width: 60 }}
-                  />
-                </Group>
-                <Text size="xs" c="dimmed" mt="xs">{getWeekDateRange(targetYear, targetWeek)}</Text>
-              </Box>
-              <Box>
-                <Text size="sm" fw={500} mb="xs">源周次（自动计算）</Text>
-                <Text size="sm">
-                  {sourceWeek.year}年 第{sourceWeek.weekNumber}周
-                </Text>
-                <Text size="xs" c="dimmed" mt="xs">{getWeekDateRange(sourceWeek.year, sourceWeek.weekNumber)}</Text>
-              </Box>
-            </SimpleGrid>
-
-            {isAdmin && (
-              <>
-                <Divider label="管理员选项" labelPosition="center" />
-                <Select
-                  label="复制范围"
-                  data={[
-                    { value: CopyMode.SELF, label: '仅复制自己的任务' },
-                    { value: CopyMode.ALL, label: '复制所有用户的任务' },
-                    { value: CopyMode.SPECIFIC_USER, label: '复制指定用户的任务' },
-                  ]}
-                  value={copyMode}
-                  onChange={(value) => setCopyMode(value as CopyMode)}
-                />
-
-                {copyMode === CopyMode.SPECIFIC_USER && (
-                  <Select
-                    label="选择用户"
-                    placeholder="请选择用户"
-                    data={availableUsers.map(u => ({
-                      value: u.id.toString(),
-                      label: u.username,
-                    }))}
-                    value={selectedUserId?.toString() || ''}
-                    onChange={(value) => setSelectedUserId(value ? Number(value) : null)}
-                    required
-                    searchable
-                  />
-                )}
-              </>
-            )}
-
-            <Group justify="flex-end" mt="md">
-              <Button variant="default" onClick={handleClose}>
-                取消
-              </Button>
-              <Button onClick={handleCopy} loading={loading} disabled={copyMode === CopyMode.SPECIFIC_USER && !selectedUserId}>
-                开始复制
-              </Button>
+        <SimpleGrid cols={2}>
+          <Box>
+            <Text size="sm" fw={500} mb="xs">目标周次</Text>
+            <Group gap="xs">
+              <NumberInput
+                value={targetYear}
+                onChange={(val) => setTargetYear(Number(val) || new Date().getFullYear())}
+                min={2000}
+                max={2100}
+                style={{ width: 80 }}
+              />
+              <NumberInput
+                value={targetWeek}
+                onChange={(val) => setTargetWeek(Number(val) || 1)}
+                min={1}
+                max={53}
+                style={{ width: 60 }}
+              />
             </Group>
-          </>
-        ) : (
+            <Text size="xs" c="dimmed" mt="xs">{getWeekDateRange(targetYear, targetWeek)}</Text>
+          </Box>
+          <Box>
+            <Text size="sm" fw={500} mb="xs">源周次（自动计算）</Text>
+            <Text size="sm">
+              {sourceWeek.year}年 第{sourceWeek.weekNumber}周
+            </Text>
+            <Text size="xs" c="dimmed" mt="xs">{getWeekDateRange(sourceWeek.year, sourceWeek.weekNumber)}</Text>
+          </Box>
+        </SimpleGrid>
+
+        {isAdmin && (
           <>
-            <Title order={4}>复制结果</Title>
+            <Divider label="管理员选项" labelPosition="center" />
+            <Select
+              label="复制范围"
+              data={[
+                { value: CopyMode.SELF, label: '仅复制自己的任务' },
+                { value: CopyMode.ALL, label: '复制所有用户的任务' },
+                { value: CopyMode.SPECIFIC_USER, label: '复制指定用户的任务' },
+              ]}
+              value={copyMode}
+              onChange={(value) => setCopyMode(value as CopyMode)}
+            />
 
-            <Stack gap="sm">
-              <Group justify="space-between">
-                <Text>成功复制</Text>
-                <Badge size="lg" color="green">{result.copiedCount}</Badge>
-              </Group>
-              <Group justify="space-between">
-                <Text>跳过重复</Text>
-                <Badge size="lg" color="yellow">{result.skippedCount}</Badge>
-              </Group>
-            </Stack>
-
-            {result.skippedTasks.length > 0 && (
-              <>
-                <Divider label="跳过的任务" labelPosition="center" mt="sm" />
-                <Box style={{ maxHeight: 200, overflow: 'auto' }}>
-                  <List spacing="xs" size="sm">
-                    {result.skippedTasks.map((skipped, index) => (
-                      <List.Item key={index}>
-                        <Text size="sm">{skipped.task}</Text>
-                        <Text size="xs" c="dimmed">{skipped.reason}</Text>
-                      </List.Item>
-                    ))}
-                  </List>
-                </Box>
-              </>
+            {copyMode === CopyMode.SPECIFIC_USER && (
+              <Select
+                label="选择用户"
+                placeholder="请选择用户"
+                data={availableUsers.map(u => ({
+                  value: u.id.toString(),
+                  label: u.username,
+                }))}
+                value={selectedUserId?.toString() || ''}
+                onChange={(value) => setSelectedUserId(value ? Number(value) : null)}
+                required
+                searchable
+              />
             )}
-
-            <Button onClick={handleClose} fullWidth mt="md">
-              确定
-            </Button>
           </>
         )}
+
+        <Group justify="flex-end" mt="md">
+          <Button variant="default" onClick={handleClose}>
+            取消
+          </Button>
+          <Button onClick={handleCopy} loading={loading} disabled={copyMode === CopyMode.SPECIFIC_USER && !selectedUserId}>
+            开始复制
+          </Button>
+        </Group>
       </Stack>
     </Modal>
   );

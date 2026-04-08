@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, LessThan } from 'typeorm';
 import { Task } from './entities/task.entity';
 import { CreateTaskDto, UpdateTaskDto, QueryTaskDto } from './dto/task.dto';
 import { CopyTaskDto, CopyTaskResultDto, CopyMode } from './dto/copy-task.dto';
@@ -149,7 +149,7 @@ export class TaskService {
     const where: any = {
       year: sourceWeek.year,
       weekNumber: sourceWeek.weekNumber,
-      progress: Between(1, 99), // 0 < progress < 100
+      progress: LessThan(100), // 进度 < 100 的任务都算未完成
     };
 
     if (sourceUserId) {
