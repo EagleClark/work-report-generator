@@ -97,6 +97,28 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
   const [weeklyWorkloadModified, setWeeklyWorkloadModified] = useState(false);
   const [initialActualWorkload, setInitialActualWorkload] = useState(initialData?.actualWorkload || 0);
 
+  // 用于跟踪进度是否被手动修改
+  const [progressManuallyModified, setProgressManuallyModified] = useState(false);
+
+  // 用于跟踪实际工作量和预计工作量是否被修改（用于判断是否自动计算进度）
+  const initialEstimatedWorkload = initialData?.estimatedWorkload || 0;
+  const [workloadModified, setWorkloadModified] = useState(false);
+
+  // 计算建议进度（实际工作量/预计工作量，限制在0-100之间）
+  const calculateSuggestedProgress = (actual: number, estimated: number): number => {
+    if (estimated <= 0) return 0;
+    const calculated = Math.round((actual / estimated) * 100);
+    return Math.min(100, Math.max(0, calculated));
+  };
+
+  // 当实际工作量或预计工作量变化时，自动更新进度（仅当工作量被修改且进度未被手动修改时）
+  useEffect(() => {
+    if (isEdit && workloadModified && !progressManuallyModified) {
+      const suggestedProgress = calculateSuggestedProgress(actualWorkload, estimatedWorkload);
+      setProgress(suggestedProgress);
+    }
+  }, [actualWorkload, estimatedWorkload, isEdit, workloadModified, progressManuallyModified]);
+
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
 
@@ -301,10 +323,26 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
         {isEdit ? (
           <SimpleGrid cols={{ base: 1, sm: 3 }}>
             <NumberInput
-              label="当前进度"
+              label={
+                <Group style={{display: 'inline'}}>
+                  <span>当前进度</span>
+                  {workloadModified && !progressManuallyModified && (
+                    <Text span size="xs" c="dimmed">(建议: {calculateSuggestedProgress(actualWorkload, estimatedWorkload)}%)</Text>
+                  )}
+                  {progressManuallyModified && (
+                    <Text span size="xs" c="orange">(已手动调整)</Text>
+                  )}
+                </Group>
+              }
               suffix=" %"
               value={progress}
-              onChange={(val) => { setProgress(Number(val) || 0); clearError('progress'); clearError('actualStartDate'); clearError('actualEndDate'); }}
+              onChange={(val) => {
+                setProgress(Number(val) || 0);
+                setProgressManuallyModified(true);
+                clearError('progress');
+                clearError('actualStartDate');
+                clearError('actualEndDate');
+              }}
               min={0}
               max={100}
               required
@@ -314,7 +352,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
               label="预计工作量"
               suffix=" 人天"
               value={estimatedWorkload}
-              onChange={(val) => { setEstimatedWorkload(Number(val) || 0); clearError('estimatedWorkload'); }}
+              onChange={(val) => { setEstimatedWorkload(Number(val) || 0); clearError('estimatedWorkload'); setWorkloadModified(true); }}
               min={0}
               required
               error={errors.estimatedWorkload}
@@ -385,6 +423,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
                   clearError('actualWorkload');
                   clearError('weeklyWorkload');
                   setWeeklyWorkloadModified(false);
+                  setWorkloadModified(true);
                 }}
                 min={0}
                 error={errors.actualWorkload}

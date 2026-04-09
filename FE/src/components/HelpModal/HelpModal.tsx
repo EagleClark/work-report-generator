@@ -13,7 +13,7 @@ const fieldDescriptions = [
   { field: '项目', description: '任务所属项目名称，新增时从已有项目中选择' },
   { field: 'US/DTS', description: '用户故事(US)或缺陷(DTS)编号，可填写链接' },
   { field: '任务详情', description: '任务的具体描述，最多200字' },
-  { field: '进度', description: '任务完成百分比，0-100%' },
+  { field: '进度', description: '任务完成百分比（0-100%），默认按实际工作量/预计工作量自动计算，也可手动调整' },
   { field: '预计', description: '预计总工作量（人天）' },
   { field: '实际', description: '已投入的总工作量（人天）' },
   { field: '本周计划', description: '计划本周投入的工作量，新增任务时必填' },
