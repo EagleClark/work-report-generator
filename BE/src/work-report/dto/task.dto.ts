@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsDateString, Min, Max } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsDateString, Min, Max, ValidateIf } from 'class-validator';
 
 export class CreateTaskDto {
   @IsNotEmpty()
@@ -121,10 +121,12 @@ export class UpdateTaskDto {
   plannedWeeklyWorkload?: number;
 
   @IsOptional()
+  @ValidateIf((o) => o.actualStartDate && o.actualStartDate.trim() !== '')
   @IsDateString()
   actualStartDate?: string;
 
   @IsOptional()
+  @ValidateIf((o) => o.actualEndDate && o.actualEndDate.trim() !== '')
   @IsDateString()
   actualEndDate?: string;
 

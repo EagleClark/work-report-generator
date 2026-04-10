@@ -227,8 +227,8 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
         submitData.progress = progress;
         if (actualWorkload !== undefined && actualWorkload !== null) submitData.actualWorkload = actualWorkload;
         if (weeklyWorkload !== undefined && weeklyWorkload !== null) submitData.weeklyWorkload = weeklyWorkload;
-        if (actualStartDate && actualStartDate.trim()) submitData.actualStartDate = actualStartDate;
-        if (actualEndDate && actualEndDate.trim()) submitData.actualEndDate = actualEndDate;
+        submitData.actualStartDate = actualStartDate || '';
+        submitData.actualEndDate = actualEndDate || '';
       }
 
       await onSubmit(submitData);
@@ -337,11 +337,16 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
               suffix=" %"
               value={progress}
               onChange={(val) => {
-                setProgress(Number(val) || 0);
+                const newProgress = Number(val) || 0;
+                setProgress(newProgress);
                 setProgressManuallyModified(true);
                 clearError('progress');
                 clearError('actualStartDate');
                 clearError('actualEndDate');
+                // 当进度从100%变为小于100%时，自动清除实际结束时间
+                if (progress === 100 && newProgress < 100) {
+                  setActualEndDate('');
+                }
               }}
               min={0}
               max={100}
@@ -469,8 +474,7 @@ export function TaskForm({ onSubmit, onCancel, initialData, isEdit, currentUser,
               value={actualEndDate}
               onChange={(e) => { setActualEndDate(e.target.value); clearError('actualEndDate'); }}
               error={errors.actualEndDate}
-              description={progress === 100 ? '进度100%时必填' : progress < 100 ? '进度未完成时不需填写' : ''}
-              disabled={progress < 100}
+              description={progress === 100 ? '进度100%时必填' : '进度未完成时应清空'}
             />
           </SimpleGrid>
         )}
