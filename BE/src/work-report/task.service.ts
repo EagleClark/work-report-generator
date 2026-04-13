@@ -126,6 +126,7 @@ export class TaskService {
 
     // 确定要复制哪些用户的任务
     let sourceUserId: string | undefined;
+    let useOrCondition = false; // 标记是否使用 OR 条件（管理员 SELF 模式）
 
     if (copyMode === CopyMode.SPECIFIC_USER) {
       if (!targetUserId) {
@@ -142,21 +143,43 @@ export class TaskService {
       // ALL 模式不过滤 userId
     } else {
       // SELF 模式（默认）
-      sourceUserId = currentUser.id.toString();
+      // 管理员复制自己的任务时，需要同时检查 userId 和 assignee
+      if (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN) {
+        useOrCondition = true;
+      } else {
+        // 普通用户：只查询 userId 匹配的任务
+        sourceUserId = currentUser.id.toString();
+      }
     }
 
     // 查找上周未完成的任务（进度 < 100）
-    const where: any = {
-      year: sourceWeek.year,
-      weekNumber: sourceWeek.weekNumber,
-      progress: LessThan(100), // 进度 < 100 的任务都算未完成
-    };
+    let sourceTasks: Task[];
 
-    if (sourceUserId) {
-      where.userId = sourceUserId;
+    if (useOrCondition) {
+      // 管理员 SELF 模式：同时检查 userId 和 assignee
+      const qb = this.taskRepository.createQueryBuilder('task');
+      sourceTasks = await qb
+        .where('task.year = :year', { year: sourceWeek.year })
+        .andWhere('task.weekNumber = :weekNumber', { weekNumber: sourceWeek.weekNumber })
+        .andWhere('task.progress < :progress', { progress: 100 })
+        .andWhere('(task.userId = :userId OR task.assignee = :assignee)', {
+          userId: currentUser.id.toString(),
+          assignee: currentUser.username,
+        })
+        .getMany();
+    } else {
+      const where: any = {
+        year: sourceWeek.year,
+        weekNumber: sourceWeek.weekNumber,
+        progress: LessThan(100),
+      };
+
+      if (sourceUserId) {
+        where.userId = sourceUserId;
+      }
+
+      sourceTasks = await this.taskRepository.find({ where });
     }
-
-    const sourceTasks = await this.taskRepository.find({ where });
 
     if (sourceTasks.length === 0) {
       return {
