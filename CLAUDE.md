@@ -9,6 +9,10 @@ A full-stack work report generator application with weekly task tracking, AI-pow
 - **Frontend (`FE/`)**: React + TypeScript + Mantine UI + Vite
 - **Backend (`BE/`)**: NestJS + TypeScript + TypeORM + SQLite (better-sqlite3)
 
+## Prerequisites
+
+- Node.js >= 22.0.0
+
 ## Development Commands
 
 ### Frontend (run from `FE/` directory)
@@ -136,6 +140,12 @@ SQLite via better-sqlite3, stored as `BE/work-report.db`. TypeORM entities:
 - `tasks` - Task records linked to projects
 - `ai_analyses` - AI analysis results keyed by (year, weekNumber)
 
+### Auto-seeding (BE/src/main.ts bootstrap)
+
+On first startup, if no SUPER_ADMIN user exists, the app creates one:
+- Username: `admin`, Password: `admin123`, Role: `SUPER_ADMIN`
+- This runs synchronously before the server starts listening.
+
 ## AI Configuration
 
 Backend `.env` for OpenAI-compatible services:
@@ -153,7 +163,28 @@ Frontend tests use Vitest with React Testing Library. Import custom render:
 import { render, screen } from '@test-utils';
 ```
 
+The custom `render` (in `test-utils/render.tsx`) wraps components with `MantineProvider` (using the app theme, `env="test"`) so Mantine components render correctly in tests.
+
+### Test Infrastructure Layers
+
+1. **`vitest.setup.mjs`** — Browser polyfills: `matchMedia`, `ResizeObserver`, `scrollIntoView`. Runs before test files.
+2. **`test/setup.ts`** — MSW server lifecycle (`listen`/`resetHandlers`/`close`), `localStorage`/`sessionStorage` mocks, DOM cleanup via `cleanup()`, and mocks for `IntersectionObserver`, `URL.createObjectURL`, `fetch`. Runs per test file.
+3. **`test-utils/render.tsx`** — Custom render wrapping components with `MantineProvider`.
+4. **`test/mocks/`** — MSW handlers (`handlers.ts`) mock all API endpoints. Test data lives in `data.ts`. Use `server.use()` in individual tests to override handlers for specific scenarios.
+
+### MSW (Mock Service Worker)
+
+API mocking uses MSW (`msw` package). The server is configured to error on unhandled requests (`onUnhandledRequest: 'error'`), so any unmocked API call fails the test. When adding new API endpoints, add corresponding MSW handlers in `test/mocks/handlers.ts`.
+
 Backend has no test framework configured.
+
+## Frontend Environment Variables
+
+| Variable | Dev default | Prod default |
+|----------|-------------|--------------|
+| `VITE_API_BASE_URL` | `http://localhost:3001/api` | `/api` |
+
+Defined in `.env.development` and `.env.production`. Override locally with `.env.local` (git-ignored).
 
 ## Path Aliases
 
