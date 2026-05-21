@@ -1,0 +1,60 @@
+---
+paths:
+  - "**/*.spec.ts"
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+---
+
+# 测试规范（本项目专属）
+
+## 技术栈
+
+- **测试运行器**：Vitest
+- **组件测试**：@testing-library/react + @testing-library/jest-dom
+- **API Mock**：MSW（msw v2）
+- **E2E**：Playwright
+- **环境**：jsdom
+
+## 测试文件组织
+
+| 类型 | 位置 | 命名 |
+|------|------|------|
+| 组件单测 | `src/components/ComponentName/ComponentName.test.tsx` | 与组件同目录 |
+| 单元测试 | `test/unit/services/*.test.ts`、`test/unit/context/*.test.tsx`、`test/unit/components/*.test.tsx` | 按被测模块分目录 |
+| 集成测试 | `test/integration/*.integration.test.tsx` | 文件名说明集成场景 |
+| E2E | `test/e2e/*.spec.ts` | Playwright 测试 |
+
+## 测试写法
+
+- 测试描述用**中文**：`describe('TaskTable组件')`、`it('正常渲染任务列表')`
+- 使用 `describe/it` 嵌套结构做逻辑分组
+- 组件测试用自定义 render（来自 `@test-utils`），它已包裹 MantineProvider
+- Context 测试用 `vi.mock('@/context/AuthContext', ...)` 注入 mock
+- 路由相关测试用 `MemoryRouter` 包裹
+
+## MSW 规范
+
+- 所有 API endpoint 必须在 `test/mocks/handlers.ts` 有对应 handler
+- MSW server 配置了 `onUnhandledRequest: 'error'`，未 mock 的请求会直接报错
+- 测试数据统一放在 `test/mocks/data.ts`
+- 单个测试需要用 `server.use(http.get(...))` 覆盖特定端点
+- 新增 API 端点时**必须同步添加 MSW handler**，否则相关测试全挂
+
+## 自定义 render（test-utils/render.tsx）
+
+```tsx
+import { render, screen } from '@test-utils';
+```
+它已包裹 `MantineProvider`（env="test"），不要自己在测试里再包一层。
+
+## 异步测试
+
+- 用 `waitFor` 等待异步状态变化
+- 用 `findByText` / `findByTestId` 等待异步元素出现
+- 用 `act` 包裹触发状态变更的操作
+- 断言用 `toBeInTheDocument()`、`toHaveAttribute()` 等 jest-dom 匹配器
+
+## E2E
+
+- Playwright 测试命名：`test/e2e/<feature>.spec.ts`
+- 覆盖关键流程：登录、任务 CRUD、周报查看
