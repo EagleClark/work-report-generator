@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit.*)",
+        "message": "提交前请确认：1) 测试全部通过 2) 已做代码检视 3) verification 完成"
+      },
+      {
+        "matcher": "Edit|Write",
+        "message": "编码前请确认已执行 brainstorming 和 TDD 步骤。建议使用项目 agent：frontend-dev / backend-dev。",
+        "ifNotIn": ["rules", "CLAUDE.md", ".claude"]
+      }
+    ],
+    "Stop": [
+      {
+        "message": "结束前检查工作流：brainstorm → TDD → implement → test → review → verify → commit？如有遗漏请继续。"
+      }
+    ]
+  }
+}

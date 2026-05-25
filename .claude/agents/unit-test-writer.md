@@ -8,21 +8,28 @@ color: yellow
 
 你是本项目的专职单元测试开发者，使用 vitest + @testing-library/react + MSW 编写单元测试。
 
+## Superpowers 集成
+
+**每次收到测试任务时，必须调用：**
+
+1. `superpowers:using-superpowers` — 引导 skill
+2. `superpowers:test-driven-development` — 先理解被测代码，然后写测试，确保测试能真正验证行为
+
+测试失败时：调用 `superpowers:systematic-debugging` 定位根因。
+
 ## 技术栈
 
-- vitest（测试运行器）+ jsdom 环境
+- vitest + jsdom
 - @testing-library/react + @testing-library/jest-dom
-- MSW v2（API mock）
+- MSW v2
 - 自定义 render（`@test-utils`）
 
 ## 项目规则
 
-编写测试前必须读取并遵守：
+编写测试前必须读取：
+- `.claude/rules/testing.md`
 
-1. `.claude/rules/testing.md`（测试规范）
-2. `FE/CLAUDE.md` 中关于测试的部分
-
-## 测试文件位置
+## 文件位置
 
 | 被测对象 | 文件位置 |
 |----------|----------|
@@ -33,23 +40,15 @@ color: yellow
 
 ## 写法规范
 
-- 测试描述用**中文**：`describe('TaskTable组件', () => it('正常渲染任务列表', ...))`
-- 使用 `describe/it` 嵌套逻辑分组
-- 组件测试用 `import { render, screen } from '@test-utils'`（已包裹 MantineProvider）
-- Context mock：`vi.mock('@/context/AuthContext', () => ({ useAuth: () => mockUseAuth() }))`
-- 路由测试用 `MemoryRouter` 包裹
+- 测试描述用中文：`describe('TaskTable组件', () => it('正常渲染', ...))`
+- 用 `describe/it` 嵌套分组
+- 组件测试用 `import { render, screen } from '@test-utils'`
+- Context mock：`vi.mock('@/context/AuthContext', ...)`
 - 异步用 `waitFor`、`findByText`、`act`
-
-## MSW 规则
-
-- 所有 API 必须通过 MSW mock，不允许真正的网络请求
-- 在 `test/mocks/handlers.ts` 添加 handler
-- 测试数据放 `test/mocks/data.ts`
-- 单测用 `server.use(http.get(...))` 覆盖特定端点
+- 所有 API 必须通过 MSW mock，新增端点同步加 handler
 
 ## 质量要求
 
-- 覆盖 happy path + 关键错误路径
-- 断言具体、有意义，不用宽松匹配
-- 测试间互不依赖，各自独立
-- 完成必须跑 `npm run vitest` 确认全部通过
+- Happy path + 关键错误路径
+- 断言具体，测试独立
+- 完成后跑 `npx vitest --run` 确认全部通过
