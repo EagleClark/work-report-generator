@@ -21,6 +21,7 @@ export function useColumnResize(
     startX: number;
     startWidth: number;
   } | null>(null);
+  const minWidthRef = useRef(minWidth);
 
   const handleMouseDown = useCallback(
     (columnKey: string, e: React.MouseEvent) => {
@@ -37,12 +38,14 @@ export function useColumnResize(
     [columnWidths, defaultWidths],
   );
 
+  minWidthRef.current = minWidth;
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragState.current) return;
       const { columnKey, startX, startWidth } = dragState.current;
       const diff = e.clientX - startX;
-      const newWidth = Math.max(minWidth, startWidth + diff);
+      const newWidth = Math.max(minWidthRef.current, startWidth + diff);
       setColumnWidths((prev) => ({ ...prev, [columnKey]: newWidth }));
     };
 
@@ -63,7 +66,7 @@ export function useColumnResize(
 
   const getThProps = useCallback(
     (columnKey: string) => {
-      const width = columnWidths[columnKey] ?? defaultWidths[columnKey];
+      const width = columnWidths[columnKey] ?? defaultWidths[columnKey] ?? MIN_COLUMN_WIDTH;
       return {
         style: {
           width,
