@@ -9,7 +9,12 @@ export interface ColumnResizeResult {
   resetWidths: () => void;
 }
 
-export function useColumnResize(defaultWidths: Record<string, number>): ColumnResizeResult {
+const MIN_COLUMN_WIDTH = 60;
+
+export function useColumnResize(
+  defaultWidths: Record<string, number>,
+  minWidth: number = MIN_COLUMN_WIDTH,
+): ColumnResizeResult {
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(defaultWidths);
   const dragState = useRef<{
     columnKey: string;
@@ -24,7 +29,7 @@ export function useColumnResize(defaultWidths: Record<string, number>): ColumnRe
       dragState.current = {
         columnKey,
         startX: e.clientX,
-        startWidth: columnWidths[columnKey] || defaultWidths[columnKey],
+        startWidth: columnWidths[columnKey] ?? defaultWidths[columnKey] ?? 100,
       };
       document.body.style.userSelect = 'none';
       document.body.style.cursor = 'col-resize';
@@ -37,7 +42,7 @@ export function useColumnResize(defaultWidths: Record<string, number>): ColumnRe
       if (!dragState.current) return;
       const { columnKey, startX, startWidth } = dragState.current;
       const diff = e.clientX - startX;
-      const newWidth = Math.max(60, startWidth + diff);
+      const newWidth = Math.max(minWidth, startWidth + diff);
       setColumnWidths((prev) => ({ ...prev, [columnKey]: newWidth }));
     };
 
@@ -70,22 +75,19 @@ export function useColumnResize(defaultWidths: Record<string, number>): ColumnRe
     [columnWidths, defaultWidths],
   );
 
-  const resizeHandle = useCallback(
-    (columnKey: string) => (
-      <div
-        style={{
-          position: 'absolute',
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: 8,
-          cursor: 'col-resize',
-          zIndex: 1,
-        }}
-        onMouseDown={(e) => handleMouseDown(columnKey, e)}
-      />
-    ),
-    [handleMouseDown],
+  const resizeHandle = (columnKey: string) => (
+    <div
+      style={{
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: 8,
+        cursor: 'col-resize',
+        zIndex: 1,
+      }}
+      onMouseDown={(e) => handleMouseDown(columnKey, e)}
+    />
   );
 
   const resetWidths = useCallback(() => {
