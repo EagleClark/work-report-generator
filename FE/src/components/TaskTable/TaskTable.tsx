@@ -11,6 +11,23 @@ import { CopyTaskModal } from '../CopyTaskModal/CopyTaskModal';
 import { useAuth } from '../../context/AuthContext';
 import { useWeek } from '../../context/WeekContext';
 import { UserRole } from '../../types/user';
+import { useColumnResize } from '../../hooks/useColumnResize';
+
+const TASK_COLUMN_DEFAULTS: Record<string, number> = {
+  project: 100,
+  usDts: 190,
+  detail: 300,
+  progress: 90,
+  estimated: 90,
+  actual: 90,
+  plannedWeekly: 90,
+  weeklyActual: 90,
+  plannedTime: 170,
+  actualTime: 170,
+  assignee: 90,
+  remark: 110,
+  actions: 100,
+};
 
 interface TaskTableProps {
   refreshTrigger?: number;
@@ -31,6 +48,7 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
   const [copyModalOpened, { open: openCopyModal, close: closeCopyModal }] = useDisclosure(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { user, hasRole } = useAuth();
+  const { columnWidths, getThProps, resizeHandle } = useColumnResize(TASK_COLUMN_DEFAULTS);
 
   // 检查是否有权限操作该任务（管理员可操作所有，普通用户只能操作自己的）
   const canOperateTask = (task: Task): boolean => {
@@ -259,36 +277,38 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
       </Group>
 
       <ScrollArea>
-        <Table striped highlightOnHover style={{ minWidth: 1680 }}>
+        <Table striped highlightOnHover style={{ minWidth: 1680, tableLayout: 'fixed' }}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th style={{ width: 100 }}>
+              <Table.Th {...getThProps('project')}>
                 <Group gap={4} wrap="nowrap">
                   项目
                   <ActionIcon size="xs" variant={sortField === 'project' ? 'filled' : 'subtle'} onClick={() => handleSort('project')}>
                     {sortField === 'project' && sortDirection === 'desc' ? '▼' : '▲'}
                   </ActionIcon>
                 </Group>
+                {resizeHandle('project')}
               </Table.Th>
-              <Table.Th style={{ width: 190 }}>US/DTS</Table.Th>
-              <Table.Th style={{ width: 300 }}>任务详情</Table.Th>
-              <Table.Th style={{ width: 90 }}>进度</Table.Th>
-              <Table.Th style={{ width: 90 }}>预计</Table.Th>
-              <Table.Th style={{ width: 90 }}>实际</Table.Th>
-              <Table.Th style={{ width: 90 }}>本周计划</Table.Th>
-              <Table.Th style={{ width: 90 }}>本周实际</Table.Th>
-              <Table.Th style={{ width: 170 }}>计划时间</Table.Th>
-              <Table.Th style={{ width: 170 }}>实际时间</Table.Th>
-              <Table.Th style={{ width: 90 }}>
+              <Table.Th {...getThProps('usDts')}>US/DTS{resizeHandle('usDts')}</Table.Th>
+              <Table.Th {...getThProps('detail')}>任务详情{resizeHandle('detail')}</Table.Th>
+              <Table.Th {...getThProps('progress')}>进度{resizeHandle('progress')}</Table.Th>
+              <Table.Th {...getThProps('estimated')}>预计{resizeHandle('estimated')}</Table.Th>
+              <Table.Th {...getThProps('actual')}>实际{resizeHandle('actual')}</Table.Th>
+              <Table.Th {...getThProps('plannedWeekly')}>本周计划{resizeHandle('plannedWeekly')}</Table.Th>
+              <Table.Th {...getThProps('weeklyActual')}>本周实际{resizeHandle('weeklyActual')}</Table.Th>
+              <Table.Th {...getThProps('plannedTime')}>计划时间{resizeHandle('plannedTime')}</Table.Th>
+              <Table.Th {...getThProps('actualTime')}>实际时间{resizeHandle('actualTime')}</Table.Th>
+              <Table.Th {...getThProps('assignee')}>
                 <Group gap={4} wrap="nowrap">
                   责任人
                   <ActionIcon size="xs" variant={sortField === 'assignee' ? 'filled' : 'subtle'} onClick={() => handleSort('assignee')}>
                     {sortField === 'assignee' && sortDirection === 'desc' ? '▼' : '▲'}
                   </ActionIcon>
                 </Group>
+                {resizeHandle('assignee')}
               </Table.Th>
-              <Table.Th style={{ width: 110 }}>备注</Table.Th>
-              <Table.Th style={{ width: 100 }}>操作</Table.Th>
+              <Table.Th {...getThProps('remark')}>备注{resizeHandle('remark')}</Table.Th>
+              <Table.Th {...getThProps('actions')}>操作{resizeHandle('actions')}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -301,51 +321,51 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
             ) : (
               sortedTasks.map((task) => (
                 <Table.Tr key={task.id}>
-                  <Table.Td style={{ width: 100 }}>
+                  <Table.Td style={{ width: columnWidths.project }}>
                     <Tooltip
                       label={task.project}
                       disabled={task.project.length <= 10}
                     >
                       <Text
                         lineClamp={1}
-                        style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                        style={{ maxWidth: columnWidths.project, overflow: 'hidden', textOverflow: 'ellipsis' }}
                       >
                         {task.project}
                       </Text>
                     </Tooltip>
                   </Table.Td>
-                  <Table.Td style={{ width: 190 }}>{renderUsDts(task)}</Table.Td>
-                  <Table.Td style={{ width: 300 }}>
+                  <Table.Td style={{ width: columnWidths.usDts }}>{renderUsDts(task)}</Table.Td>
+                  <Table.Td style={{ width: columnWidths.detail }}>
                     <Tooltip
                       label={task.taskDetail}
                       multiline
                       maw={400}
                       styles={{ tooltip: { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } }}
                     >
-                      <Text lineClamp={2} style={{ maxWidth: 300 }}>{task.taskDetail}</Text>
+                      <Text lineClamp={2} style={{ maxWidth: columnWidths.detail }}>{task.taskDetail}</Text>
                     </Tooltip>
                   </Table.Td>
-                  <Table.Td style={{ width: 90 }}>
+                  <Table.Td style={{ width: columnWidths.progress }}>
                     <Badge color={getProgressColor(task.progress)}>
                       {task.progress}%
                     </Badge>
                   </Table.Td>
-                  <Table.Td style={{ width: 90 }}>{task.estimatedWorkload || '-'}</Table.Td>
-                  <Table.Td style={{ width: 90 }}>{task.actualWorkload || '-'}</Table.Td>
-                  <Table.Td style={{ width: 90 }}>{task.plannedWeeklyWorkload || '-'}</Table.Td>
-                  <Table.Td style={{ width: 90 }}>{task.weeklyWorkload || '-'}</Table.Td>
-                  <Table.Td style={{ width: 170 }}>
+                  <Table.Td style={{ width: columnWidths.estimated }}>{task.estimatedWorkload || '-'}</Table.Td>
+                  <Table.Td style={{ width: columnWidths.actual }}>{task.actualWorkload || '-'}</Table.Td>
+                  <Table.Td style={{ width: columnWidths.plannedWeekly }}>{task.plannedWeeklyWorkload || '-'}</Table.Td>
+                  <Table.Td style={{ width: columnWidths.weeklyActual }}>{task.weeklyWorkload || '-'}</Table.Td>
+                  <Table.Td style={{ width: columnWidths.plannedTime }}>
                     <Text size="xs">
                       {task.plannedStartDate || '-'} ~ {task.plannedEndDate || '-'}
                     </Text>
                   </Table.Td>
-                  <Table.Td style={{ width: 170 }}>
+                  <Table.Td style={{ width: columnWidths.actualTime }}>
                     <Text size="xs">
                       {task.actualStartDate || '-'} ~ {task.actualEndDate || '-'}
                     </Text>
                   </Table.Td>
-                  <Table.Td style={{ width: 90 }}>{task.assignee || '-'}</Table.Td>
-                  <Table.Td style={{ width: 110 }}>
+                  <Table.Td style={{ width: columnWidths.assignee }}>{task.assignee || '-'}</Table.Td>
+                  <Table.Td style={{ width: columnWidths.remark }}>
                     {task.remark ? (
                       <Tooltip
                         label={task.remark}
@@ -354,14 +374,14 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
                         styles={{ tooltip: { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } }}
                       >
                         <span style={{ display: 'inline-block', cursor: 'pointer' }}>
-                          <Text lineClamp={2} style={{ maxWidth: 110 }}>{task.remark}</Text>
+                          <Text lineClamp={2} style={{ maxWidth: columnWidths.remark }}>{task.remark}</Text>
                         </span>
                       </Tooltip>
                     ) : (
                       <Text c="dimmed">-</Text>
                     )}
                   </Table.Td>
-                  <Table.Td style={{ width: 100 }}>
+                  <Table.Td style={{ width: columnWidths.actions }}>
                     {canOperateTask(task) ? (
                       <Group gap={4} wrap="nowrap">
                         <Button size="compact-xs" variant="light" onClick={() => openEditModal(task)}>
