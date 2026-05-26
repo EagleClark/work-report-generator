@@ -10,6 +10,7 @@ import { useWeek } from '../context/WeekContext';
 import { AIAnalysisDisplay } from '../components/AIAnalysisDisplay/AIAnalysisDisplay';
 import { TaskAnalysis } from '../components/TaskAnalysis/TaskAnalysis';
 import { useColumnResize } from '../hooks/useColumnResize';
+import { useColumnVisibility, type ColumnMeta } from '../hooks/useColumnVisibility';
 
 // 任务分类统计接口
 interface CategoryStats {
@@ -178,11 +179,27 @@ const WEEKLY_COLUMN_DEFAULTS: Record<string, number> = {
   remark: 110,
 };
 
+const WEEKLY_COLUMNS: ColumnMeta[] = [
+  { key: 'project', label: '项目' },
+  { key: 'usDts', label: 'US/DTS' },
+  { key: 'detail', label: '任务详情' },
+  { key: 'progress', label: '进度' },
+  { key: 'estimated', label: '预计' },
+  { key: 'actual', label: '实际' },
+  { key: 'plannedWeekly', label: '本周计划' },
+  { key: 'weeklyActual', label: '本周实际' },
+  { key: 'plannedTime', label: '计划时间' },
+  { key: 'actualTime', label: '实际时间' },
+  { key: 'assignee', label: '责任人' },
+  { key: 'remark', label: '备注' },
+];
+
 export function WeeklyReportPage() {
   const { year, weekNumber } = useWeek();
   const [summary, setSummary] = useState<WeeklySummary | null>(null);
   const [loading, setLoading] = useState(false);
   const { columnWidths, getThProps, resizeHandle } = useColumnResize(WEEKLY_COLUMN_DEFAULTS);
+  const { visibleKeys, isVisible, ColumnConfigButton } = useColumnVisibility(WEEKLY_COLUMNS);
 
   // 排序状态
   type SortField = 'project' | 'assignee' | null;
@@ -634,115 +651,164 @@ export function WeeklyReportPage() {
             <TaskAnalysis tasks={summary.tasks} />
           </Box>
 
-          <Group mb="sm">
+          <Group mb="sm" justify="space-between">
             <Text size="lg" fw={500}>任务明细</Text>
+            {ColumnConfigButton}
           </Group>
           <ScrollArea>
             <Table striped highlightOnHover style={{ minWidth: 1680, tableLayout: 'fixed' }}>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th {...getThProps('project')}>
-                      <Group gap={4} wrap="nowrap">
-                        项目
-                        <ActionIcon size="xs" variant={sortField === 'project' ? 'filled' : 'subtle'} onClick={() => handleSort('project')}>
-                          {sortField === 'project' && sortDirection === 'desc' ? '▼' : '▲'}
-                        </ActionIcon>
-                      </Group>
-                      {resizeHandle('project')}
-                    </Table.Th>
-                    <Table.Th {...getThProps('usDts')}>US/DTS{resizeHandle('usDts')}</Table.Th>
-                    <Table.Th {...getThProps('detail')}>任务详情{resizeHandle('detail')}</Table.Th>
-                    <Table.Th {...getThProps('progress')}>进度{resizeHandle('progress')}</Table.Th>
-                    <Table.Th {...getThProps('estimated')}>预计{resizeHandle('estimated')}</Table.Th>
-                    <Table.Th {...getThProps('actual')}>实际{resizeHandle('actual')}</Table.Th>
-                    <Table.Th {...getThProps('plannedWeekly')}>本周计划{resizeHandle('plannedWeekly')}</Table.Th>
-                    <Table.Th {...getThProps('weeklyActual')}>本周实际{resizeHandle('weeklyActual')}</Table.Th>
-                    <Table.Th {...getThProps('plannedTime')}>计划时间{resizeHandle('plannedTime')}</Table.Th>
-                    <Table.Th {...getThProps('actualTime')}>实际时间{resizeHandle('actualTime')}</Table.Th>
-                    <Table.Th {...getThProps('assignee')}>
-                      <Group gap={4} wrap="nowrap">
-                        责任人
-                        <ActionIcon size="xs" variant={sortField === 'assignee' ? 'filled' : 'subtle'} onClick={() => handleSort('assignee')}>
-                          {sortField === 'assignee' && sortDirection === 'desc' ? '▼' : '▲'}
-                        </ActionIcon>
-                      </Group>
-                      {resizeHandle('assignee')}
-                    </Table.Th>
-                    <Table.Th {...getThProps('remark')}>备注</Table.Th>
+                    {isVisible('project') && (
+                      <Table.Th {...getThProps('project')}>
+                        <Group gap={4} wrap="nowrap">
+                          项目
+                          <ActionIcon size="xs" variant={sortField === 'project' ? 'filled' : 'subtle'} onClick={() => handleSort('project')}>
+                            {sortField === 'project' && sortDirection === 'desc' ? '▼' : '▲'}
+                          </ActionIcon>
+                        </Group>
+                        {resizeHandle('project')}
+                      </Table.Th>
+                    )}
+                    {isVisible('usDts') && (
+                      <Table.Th {...getThProps('usDts')}>US/DTS{resizeHandle('usDts')}</Table.Th>
+                    )}
+                    {isVisible('detail') && (
+                      <Table.Th {...getThProps('detail')}>任务详情{resizeHandle('detail')}</Table.Th>
+                    )}
+                    {isVisible('progress') && (
+                      <Table.Th {...getThProps('progress')}>进度{resizeHandle('progress')}</Table.Th>
+                    )}
+                    {isVisible('estimated') && (
+                      <Table.Th {...getThProps('estimated')}>预计{resizeHandle('estimated')}</Table.Th>
+                    )}
+                    {isVisible('actual') && (
+                      <Table.Th {...getThProps('actual')}>实际{resizeHandle('actual')}</Table.Th>
+                    )}
+                    {isVisible('plannedWeekly') && (
+                      <Table.Th {...getThProps('plannedWeekly')}>本周计划{resizeHandle('plannedWeekly')}</Table.Th>
+                    )}
+                    {isVisible('weeklyActual') && (
+                      <Table.Th {...getThProps('weeklyActual')}>本周实际{resizeHandle('weeklyActual')}</Table.Th>
+                    )}
+                    {isVisible('plannedTime') && (
+                      <Table.Th {...getThProps('plannedTime')}>计划时间{resizeHandle('plannedTime')}</Table.Th>
+                    )}
+                    {isVisible('actualTime') && (
+                      <Table.Th {...getThProps('actualTime')}>实际时间{resizeHandle('actualTime')}</Table.Th>
+                    )}
+                    {isVisible('assignee') && (
+                      <Table.Th {...getThProps('assignee')}>
+                        <Group gap={4} wrap="nowrap">
+                          责任人
+                          <ActionIcon size="xs" variant={sortField === 'assignee' ? 'filled' : 'subtle'} onClick={() => handleSort('assignee')}>
+                            {sortField === 'assignee' && sortDirection === 'desc' ? '▼' : '▲'}
+                          </ActionIcon>
+                        </Group>
+                        {resizeHandle('assignee')}
+                      </Table.Th>
+                    )}
+                    {isVisible('remark') && (
+                      <Table.Th {...getThProps('remark')}>备注{resizeHandle('remark')}</Table.Th>
+                    )}
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {sortedTasks.length === 0 ? (
                     <Table.Tr>
-                      <Table.Td colSpan={12}>
+                      <Table.Td colSpan={visibleKeys.length}>
                         <Text c="dimmed" ta="center">暂无数据</Text>
                       </Table.Td>
                     </Table.Tr>
                   ) : (
                     sortedTasks.map((task) => (
                       <Table.Tr key={task.id}>
-                        <Table.Td style={{ width: columnWidths.project }}>
-                          <Tooltip
-                            label={task.project}
-                            disabled={task.project.length <= 10}
-                          >
-                            <Text
-                              lineClamp={1}
-                              style={{ maxWidth: columnWidths.project, overflow: 'hidden', textOverflow: 'ellipsis' }}
-                            >
-                              {task.project}
-                            </Text>
-                          </Tooltip>
-                        </Table.Td>
-                        <Table.Td style={{ width: columnWidths.usDts }}>{renderUsDts(task)}</Table.Td>
-                        <Table.Td style={{ width: columnWidths.detail }}>
-                          <Tooltip
-                            label={task.taskDetail}
-                            multiline
-                            maw={400}
-                            styles={{ tooltip: { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } }}
-                          >
-                            <span style={{ display: 'inline-block', cursor: 'pointer' }}>
-                              <Text lineClamp={2} style={{ maxWidth: columnWidths.detail }}>{task.taskDetail}</Text>
-                            </span>
-                          </Tooltip>
-                        </Table.Td>
-                        <Table.Td style={{ width: columnWidths.progress }}>
-                          <Badge color={getProgressColor(task.progress)}>
-                            {task.progress}%
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td style={{ width: columnWidths.estimated }}>{task.estimatedWorkload}</Table.Td>
-                        <Table.Td style={{ width: columnWidths.actual }}>{task.actualWorkload}</Table.Td>
-                        <Table.Td style={{ width: columnWidths.plannedWeekly }}>{task.plannedWeeklyWorkload || '-'}</Table.Td>
-                        <Table.Td style={{ width: columnWidths.weeklyActual }}>{task.weeklyWorkload}</Table.Td>
-                        <Table.Td style={{ width: columnWidths.plannedTime }}>
-                          <Text size="xs">
-                            {task.plannedStartDate || '-'} ~ {task.plannedEndDate || '-'}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td style={{ width: columnWidths.actualTime }}>
-                          <Text size="xs">
-                            {task.actualStartDate || '-'} ~ {task.actualEndDate || '-'}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td style={{ width: columnWidths.assignee }}>{task.assignee || '-'}</Table.Td>
-                        <Table.Td style={{ width: columnWidths.remark }}>
-                          {task.remark ? (
+                        {isVisible('project') && (
+                          <Table.Td style={{ width: columnWidths.project }}>
                             <Tooltip
-                              label={task.remark}
+                              label={task.project}
+                              disabled={task.project.length <= 10}
+                            >
+                              <Text
+                                lineClamp={1}
+                                style={{ maxWidth: columnWidths.project, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                              >
+                                {task.project}
+                              </Text>
+                            </Tooltip>
+                          </Table.Td>
+                        )}
+                        {isVisible('usDts') && (
+                          <Table.Td style={{ width: columnWidths.usDts }}>{renderUsDts(task)}</Table.Td>
+                        )}
+                        {isVisible('detail') && (
+                          <Table.Td style={{ width: columnWidths.detail }}>
+                            <Tooltip
+                              label={task.taskDetail}
                               multiline
-                              maw={300}
+                              maw={400}
                               styles={{ tooltip: { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } }}
                             >
                               <span style={{ display: 'inline-block', cursor: 'pointer' }}>
-                                <Text lineClamp={2} style={{ maxWidth: columnWidths.remark }}>{task.remark}</Text>
+                                <Text lineClamp={2} style={{ maxWidth: columnWidths.detail }}>{task.taskDetail}</Text>
                               </span>
                             </Tooltip>
-                          ) : (
-                            <Text c="dimmed">-</Text>
-                          )}
-                        </Table.Td>
+                          </Table.Td>
+                        )}
+                        {isVisible('progress') && (
+                          <Table.Td style={{ width: columnWidths.progress }}>
+                            <Badge color={getProgressColor(task.progress)}>
+                              {task.progress}%
+                            </Badge>
+                          </Table.Td>
+                        )}
+                        {isVisible('estimated') && (
+                          <Table.Td style={{ width: columnWidths.estimated }}>{task.estimatedWorkload}</Table.Td>
+                        )}
+                        {isVisible('actual') && (
+                          <Table.Td style={{ width: columnWidths.actual }}>{task.actualWorkload}</Table.Td>
+                        )}
+                        {isVisible('plannedWeekly') && (
+                          <Table.Td style={{ width: columnWidths.plannedWeekly }}>{task.plannedWeeklyWorkload || '-'}</Table.Td>
+                        )}
+                        {isVisible('weeklyActual') && (
+                          <Table.Td style={{ width: columnWidths.weeklyActual }}>{task.weeklyWorkload}</Table.Td>
+                        )}
+                        {isVisible('plannedTime') && (
+                          <Table.Td style={{ width: columnWidths.plannedTime }}>
+                            <Text size="xs">
+                              {task.plannedStartDate || '-'} ~ {task.plannedEndDate || '-'}
+                            </Text>
+                          </Table.Td>
+                        )}
+                        {isVisible('actualTime') && (
+                          <Table.Td style={{ width: columnWidths.actualTime }}>
+                            <Text size="xs">
+                              {task.actualStartDate || '-'} ~ {task.actualEndDate || '-'}
+                            </Text>
+                          </Table.Td>
+                        )}
+                        {isVisible('assignee') && (
+                          <Table.Td style={{ width: columnWidths.assignee }}>{task.assignee || '-'}</Table.Td>
+                        )}
+                        {isVisible('remark') && (
+                          <Table.Td style={{ width: columnWidths.remark }}>
+                            {task.remark ? (
+                              <Tooltip
+                                label={task.remark}
+                                multiline
+                                maw={300}
+                                styles={{ tooltip: { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } }}
+                              >
+                                <span style={{ display: 'inline-block', cursor: 'pointer' }}>
+                                  <Text lineClamp={2} style={{ maxWidth: columnWidths.remark }}>{task.remark}</Text>
+                                </span>
+                              </Tooltip>
+                            ) : (
+                              <Text c="dimmed">-</Text>
+                            )}
+                          </Table.Td>
+                        )}
                       </Table.Tr>
                     ))
                   )}
