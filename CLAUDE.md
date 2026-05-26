@@ -41,15 +41,21 @@ A full-stack work report generator application with weekly task tracking, AI-pow
   ↓
 ③ frontend-dev / backend-dev（编码实现）
   ↓
-④ unit-test-writer / integration-test-writer（补测试）
+┌─────────────────────────────────────┐
+│  dispatching-parallel-agents        │
+│  ┌───────────┬──────────┬────────┐  │
+│  │unit-test  │integration│  e2e  │  │
+│  │-writer    │-test     │-test  │  │
+│  └───────────┴──────────┴────────┘  │
+└─────────────────────────────────────┘
   ↓
-⑤ test-analyzer（运行测试、分析结果）
+④ test-analyzer（汇总分析）
   ↓
-⑥ frontend-reviewer / backend-reviewer（代码检视）
+⑤ frontend-reviewer / backend-reviewer（代码检视）
   ↓
-⑦ verification（验证通过）
+⑥ verification（验证通过）
   ↓
-⑧ commit（提交代码）
+⑦ commit（提交代码）
 ```
 
 ### Superpowers Skills
