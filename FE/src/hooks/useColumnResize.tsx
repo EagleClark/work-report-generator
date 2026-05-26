@@ -11,41 +11,6 @@ export interface ColumnResizeResult {
 
 const MIN_COLUMN_WIDTH = 60;
 
-function ResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => void }) {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        right: 0,
-        top: 0,
-        bottom: 0,
-        width: 8,
-        cursor: 'col-resize',
-        zIndex: 1,
-      }}
-      onMouseDown={onMouseDown}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          top: '20%',
-          height: '60%',
-          width: 2,
-          borderRadius: 1,
-          backgroundColor: hovered ? '#228be6' : 'transparent',
-          transition: 'background-color 0.15s ease',
-        }}
-      />
-    </div>
-  );
-}
-
 export function useColumnResize(
   defaultWidths: Record<string, number>,
   minWidth: number = MIN_COLUMN_WIDTH,
@@ -114,7 +79,30 @@ export function useColumnResize(
   );
 
   const resizeHandle = (columnKey: string) => (
-    <ResizeHandle onMouseDown={(e) => handleMouseDown(columnKey, e)} />
+    <div
+      style={{
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: 8,
+        cursor: 'col-resize',
+        zIndex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+      onMouseDown={(e) => handleMouseDown(columnKey, e)}
+    >
+      <div
+        style={{
+          width: 2,
+          height: '50%',
+          borderRadius: 1,
+          backgroundColor: 'var(--mantine-color-gray-4)',
+        }}
+      />
+    </div>
   );
 
   const resetWidths = useCallback(() => {
