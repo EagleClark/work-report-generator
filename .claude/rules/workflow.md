@@ -23,12 +23,20 @@
 ① brainstorming — 需求分析、方案设计、明确验收标准
 ② TDD — 先写失败的测试，再写实现代码
 ③ frontend-dev / backend-dev — 编码实现
-④ unit-test-writer / integration-test-writer — 补充/更新测试
-⑤ test-analyzer — 运行测试，分析结果，修到全部通过
-⑥ frontend-reviewer / backend-reviewer — 检视变更
-⑦ verification — 运行完整验证确认通过
-⑧ commit — 提交代码
+                         ↓
+         ┌───────────────┼───────────────┐
+         ↓               ↓               ↓
+   unit-test-writer  integration-test  e2e-test-writer
+      (单元测试)        (集成测试)         (E2E测试)
+         └───────────────┼───────────────┘
+                         ↓
+④ test-analyzer — 汇总三个测试结果，分析失败，修到全部通过
+⑤ frontend-reviewer / backend-reviewer — 检视变更
+⑥ verification — 运行完整验证确认通过
+⑦ commit — 提交代码
 ```
+
+步骤 ③ 完成后，使用 `superpowers:dispatching-parallel-agents` 同时 dispatch 三个测试 agent。
 
 ## Superpowers Skills
 
@@ -48,3 +56,4 @@
 - 禁止跳过 TDD 直接写实现
 - 禁止跳过 review 直接提交
 - 提交前必须跑通所有测试
+- 实现完成后必须同时编写单元测试、集成测试、E2E 测试（可并行），禁止只写一种
