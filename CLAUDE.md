@@ -15,64 +15,7 @@ A full-stack work report generator application with weekly task tracking, AI-pow
 
 ## Development Workflow
 
-本项目配置了 **agent 工作流** 和 **superpowers skills**，开发时必须遵循以下流程：
-
-### Agent 列表
-
-| Agent | 用途 | 触发场景 |
-|-------|------|----------|
-| `frontend-dev` | 前端代码开发 | FE/src 下的页面/组件/API/Context |
-| `backend-dev` | 后端代码开发 | BE/src 下的 Controller/Service/Entity |
-| `unit-test-writer` | 单元测试编写 | 组件/API/Context/工具函数单测 |
-| `integration-test-writer` | 集成测试编写 | 多组件协同流程测试 |
-| `e2e-test-writer` | E2E 测试编写 | Playwright 端到端流程 |
-| `test-analyzer` | 测试执行分析 | 跑测试 + 分析失败 + 修复建议 |
-| `frontend-reviewer` | 前端代码检视 | git diff 变更检视 |
-| `backend-reviewer` | 后端代码检视 | git diff 变更检视 |
-
-### 标准开发流程
-
-```
-用户需求
-  ↓
-① brainstorming（需求分析、方案设计）
-  ↓
-② TDD（先写测试）
-  ↓
-③ frontend-dev / backend-dev（编码实现）
-  ↓
-┌─────────────────────────────────────┐
-│  dispatching-parallel-agents        │
-│  ┌───────────┬──────────┬────────┐  │
-│  │unit-test  │integration│  e2e  │  │
-│  │-writer    │-test     │-test  │  │
-│  └───────────┴──────────┴────────┘  │
-└─────────────────────────────────────┘
-  ↓
-④ test-analyzer（汇总分析）
-  ↓
-⑤ frontend-reviewer / backend-reviewer（代码检视）
-  ↓
-⑥ verification（验证通过）
-  ↓
-⑦ commit（提交代码）
-```
-
-### Superpowers Skills
-
-开发过程中必须使用 superpowers skills，禁止跳过：
-- `superpowers:using-superpowers` — 每次开发任务入口，自动触发
-- `superpowers:brainstorming` — 编码前需求分析和方案设计
-- `superpowers:test-driven-development` — 先写测试再写实现
-- `superpowers:systematic-debugging` — 遇到 Bug 时系统化调试
-- `superpowers:verification-before-completion` — 完成后跑验证确认通过
-
-### 工作流守护
-
-以下 hooks 在关键节点提醒（`.claude/settings.json`）：
-- 直接编辑源码 → 提醒使用 agent
-- 执行 `git commit` → 提醒跑测试和 review
-- Session 结束 → 提醒检查工作流完整性
+开发工作流、agent 列表、superpowers skills 使用规范详见 `.claude/rules/workflow.md`。
 
 ## Development Commands
 
