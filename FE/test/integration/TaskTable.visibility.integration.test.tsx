@@ -86,4 +86,104 @@ describe('TaskTable 列配置隐藏集成测试', () => {
     // US/DTS 列头不应存在
     expect(screen.queryByText('US/DTS')).toBeNull();
   });
+
+  it('点击"全选"按钮恢复所有列', async () => {
+    const user = userEvent.setup();
+    render(
+      <TestWrapper>
+        <TaskTable />
+      </TestWrapper>
+    );
+
+    const buttons = screen.getAllByRole('button');
+    const gearButton = buttons.find(btn =>
+      btn.querySelector('svg')
+    )!;
+    await user.click(gearButton);
+
+    // 先隐藏两列
+    await user.click(screen.getByRole('checkbox', { name: /项目/ }));
+    await user.click(screen.getByRole('checkbox', { name: /US\/DTS/ }));
+
+    // 点击"全选"
+    await user.click(screen.getByRole('button', { name: /全选/ }));
+
+    // 关闭 popover
+    await user.click(gearButton);
+
+    // 所有列头应重新出现
+    expect(screen.getByText('US/DTS')).toBeDefined();
+    expect(screen.getByRole('columnheader', { name: /项目/ })).toBeDefined();
+  });
+
+  it('点击"最少"按钮仅保留第一列', async () => {
+    const user = userEvent.setup();
+    render(
+      <TestWrapper>
+        <TaskTable />
+      </TestWrapper>
+    );
+
+    const buttons = screen.getAllByRole('button');
+    const gearButton = buttons.find(btn =>
+      btn.querySelector('svg')
+    )!;
+    await user.click(gearButton);
+
+    await user.click(screen.getByRole('button', { name: /最少/ }));
+    await user.click(gearButton);
+
+    // 只有"项目"在表头中（第一列之后的列应该隐藏）
+    expect(screen.getByRole('columnheader', { name: /项目/ })).toBeDefined();
+    expect(screen.queryByText('US/DTS')).toBeNull();
+  });
+
+  it('最后一列可见时其 Checkbox 被 disabled', async () => {
+    const user = userEvent.setup();
+    render(
+      <TestWrapper>
+        <TaskTable />
+      </TestWrapper>
+    );
+
+    const buttons = screen.getAllByRole('button');
+    const gearButton = buttons.find(btn =>
+      btn.querySelector('svg')
+    )!;
+    await user.click(gearButton);
+
+    // 点击"最少"只留第一列
+    await user.click(screen.getByRole('button', { name: /最少/ }));
+
+    // "项目"checkbox 应被 disabled（它是唯一的可见列）
+    const projectCheckbox = screen.getByRole('checkbox', { name: /项目/ });
+    expect(projectCheckbox).toBeDisabled();
+  });
+
+  it('重新勾选已隐藏的列使其恢复', async () => {
+    const user = userEvent.setup();
+    render(
+      <TestWrapper>
+        <TaskTable />
+      </TestWrapper>
+    );
+
+    const buttons = screen.getAllByRole('button');
+    const gearButton = buttons.find(btn =>
+      btn.querySelector('svg')
+    )!;
+    await user.click(gearButton);
+
+    // 隐藏 US/DTS
+    const usDtsCheckbox = screen.getByRole('checkbox', { name: /US\/DTS/ });
+    await user.click(usDtsCheckbox);
+    expect(usDtsCheckbox).not.toBeChecked();
+
+    // 重新勾选
+    await user.click(usDtsCheckbox);
+    expect(usDtsCheckbox).toBeChecked();
+
+    await user.click(gearButton);
+    expect(screen.getByText('US/DTS')).toBeDefined();
+  });
 });

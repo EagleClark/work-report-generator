@@ -40,42 +40,45 @@ export function useColumnVisibility(columns: ColumnMeta[]): ColumnVisibilityResu
     [columns.length],
   );
 
-  const isVisible = useCallback((key: string) => !hiddenKeys.has(key), [hiddenKeys]);
+  const isVisible = (key: string) => !hiddenKeys.has(key);
 
   const showAll = useCallback(() => setHiddenKeys(new Set()), []);
   const hideAll = useCallback(() => {
     setHiddenKeys(new Set(columns.slice(1).map((c) => c.key)));
   }, [columns]);
 
-  const ColumnConfigButton = (
-    <Popover width={220} position="bottom-end" shadow="md">
-      <Popover.Target>
-        <ActionIcon variant="subtle" color="gray">
-          <IconSettings size={18} />
-        </ActionIcon>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <Stack gap="xs">
-          {columns.map((col) => (
-            <Checkbox
-              key={col.key}
-              label={col.label}
-              checked={isVisible(col.key)}
-              disabled={isVisible(col.key) && visibleKeys.length <= 1}
-              onChange={() => toggleColumn(col.key)}
-            />
-          ))}
-          <Group justify="flex-end" gap="xs" mt="xs">
-            <Button size="compact-xs" variant="subtle" onClick={showAll}>
-              全选
-            </Button>
-            <Button size="compact-xs" variant="subtle" onClick={hideAll}>
-              最少
-            </Button>
-          </Group>
-        </Stack>
-      </Popover.Dropdown>
-    </Popover>
+  const ColumnConfigButton = useMemo(
+    () => (
+      <Popover width={220} position="bottom-end" shadow="md">
+        <Popover.Target>
+          <ActionIcon variant="subtle" color="gray">
+            <IconSettings size={18} />
+          </ActionIcon>
+        </Popover.Target>
+        <Popover.Dropdown>
+          <Stack gap="xs">
+            {columns.map((col) => (
+              <Checkbox
+                key={col.key}
+                label={col.label}
+                checked={isVisible(col.key)}
+                disabled={isVisible(col.key) && visibleKeys.length <= 1}
+                onChange={() => toggleColumn(col.key)}
+              />
+            ))}
+            <Group justify="flex-end" gap="xs" mt="xs">
+              <Button size="compact-xs" variant="subtle" onClick={showAll}>
+                全选
+              </Button>
+              <Button size="compact-xs" variant="subtle" onClick={hideAll}>
+                最少
+              </Button>
+            </Group>
+          </Stack>
+        </Popover.Dropdown>
+      </Popover>
+    ),
+    [columns, visibleKeys, toggleColumn, showAll, hideAll],
   );
 
   return { visibleKeys, isVisible, toggleColumn, showAll, hideAll, ColumnConfigButton };

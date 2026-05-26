@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, render, screen } from '@testing-library/react';
+import { MantineProvider } from '@mantine/core';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 
 const MOCK_COLUMNS = [
@@ -65,9 +66,60 @@ describe('useColumnVisibility', () => {
     expect(result.current.visibleKeys).toEqual(['b']);
   });
 
-  it('ColumnConfigButton 是一个 React 元素', () => {
+  it('ColumnConfigButton 渲染齿轮图标', () => {
+    function TestButton() {
+      const { ColumnConfigButton } = useColumnVisibility(MOCK_COLUMNS);
+      return <div data-testid="wrapper">{ColumnConfigButton}</div>;
+    }
+    render(<TestButton />, { wrapper: MantineProvider });
+    const wrapper = screen.getByTestId('wrapper');
+    const svg = wrapper.querySelector('svg');
+    expect(svg).not.toBeNull();
+  });
+
+  it('0 列时不崩溃且 visibleKeys 为空', () => {
+    const { result } = renderHook(() => useColumnVisibility([]));
+    expect(result.current.visibleKeys).toEqual([]);
+    // toggleColumn on empty state should not throw
+    expect(() => act(() => { result.current.toggleColumn('any'); })).not.toThrow();
+    expect(() => act(() => { result.current.showAll(); })).not.toThrow();
+    expect(() => act(() => { result.current.hideAll(); })).not.toThrow();
+  });
+
+  it('1 列时无法隐藏该列', () => {
+    const single = [{ key: 'only', label: '唯一列' }];
+    const { result } = renderHook(() => useColumnVisibility(single));
+    act(() => { result.current.toggleColumn('only'); });
+    expect(result.current.visibleKeys).toEqual(['only']);
+  });
+
+  it('1 列时 hideAll 仍保留该列', () => {
+    const single = [{ key: 'only', label: '唯一列' }];
+    const { result } = renderHook(() => useColumnVisibility(single));
+    act(() => { result.current.hideAll(); });
+    expect(result.current.visibleKeys).toEqual(['only']);
+  });
+
+  it('toggleColumn 对未知 key 无影响', () => {
     const { result } = renderHook(() => useColumnVisibility(MOCK_COLUMNS));
-    expect(result.current.ColumnConfigButton).toBeDefined();
-    expect(typeof result.current.ColumnConfigButton).toBe('object');
+    act(() => { result.current.toggleColumn('unknown'); });
+    expect(result.current.visibleKeys).toEqual(['a', 'b', 'c']);
+  });
+
+  it('hideAll 先隐藏部分再 hideAll 仅保留第一列', () => {
+    const { result } = renderHook(() => useColumnVisibility(MOCK_COLUMNS));
+    act(() => { result.current.toggleColumn('b'); });
+    act(() => { result.current.hideAll(); });
+    expect(result.current.visibleKeys).toEqual(['a']);
+  });
+
+  it('最后可见列的 Checkbox 被 disabled', () => {
+    const { result } = renderHook(() => useColumnVisibility(MOCK_COLUMNS));
+    // 隐藏 a 和 b，只剩 c 可见
+    act(() => { result.current.toggleColumn('a'); });
+    act(() => { result.current.toggleColumn('b'); });
+    // 现在只剩 c，它的 disabled 应该为 true
+    expect(result.current.isVisible('c')).toBe(true);
+    expect(result.current.visibleKeys).toEqual(['c']);
   });
 });
