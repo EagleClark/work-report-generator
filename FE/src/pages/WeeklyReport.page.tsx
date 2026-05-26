@@ -668,7 +668,7 @@ export function WeeklyReportPage() {
                       </Group>
                       {resizeHandle('assignee')}
                     </Table.Th>
-                    <Table.Th {...getThProps('remark')}>备注{resizeHandle('remark')}</Table.Th>
+                    <Table.Th {...getThProps('remark')}>备注</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>

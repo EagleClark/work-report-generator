@@ -35,7 +35,7 @@ describe('TaskTable 列宽拖动集成测试', () => {
     vi.clearAllMocks();
   });
 
-  it('渲染所有 13 列表头，每列含 resizeHandle', () => {
+  it('渲染所有列头，除最后一列外均含 resizeHandle', () => {
     render(
       <TestWrapper>
         <TaskTable />
@@ -45,11 +45,18 @@ describe('TaskTable 列宽拖动集成测试', () => {
     const thElements = screen.getAllByRole('columnheader');
     expect(thElements).toHaveLength(13);
 
-    thElements.forEach(th => {
+    // 前12列应有 resizeHandle，最后一列（操作）不应有
+    thElements.slice(0, -1).forEach(th => {
       const divs = th.querySelectorAll('div');
       const hasResizeHandle = Array.from(divs).some(div => div.style.cursor === 'col-resize');
       expect(hasResizeHandle).toBe(true);
     });
+
+    // 最后一列不应有 resizeHandle
+    const lastTh = thElements[thElements.length - 1];
+    const lastDivs = lastTh.querySelectorAll('div');
+    const lastHasHandle = Array.from(lastDivs).some(div => div.style.cursor === 'col-resize');
+    expect(lastHasHandle).toBe(false);
   });
 
   it('拖动列宽后宽度发生变化', async () => {

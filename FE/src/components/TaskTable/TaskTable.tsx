@@ -308,7 +308,7 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
                 {resizeHandle('assignee')}
               </Table.Th>
               <Table.Th {...getThProps('remark')}>备注{resizeHandle('remark')}</Table.Th>
-              <Table.Th {...getThProps('actions')}>操作{resizeHandle('actions')}</Table.Th>
+              <Table.Th {...getThProps('actions')}>操作</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
