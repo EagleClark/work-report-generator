@@ -88,6 +88,7 @@ export function useColumnResize(
         width: 8,
         cursor: 'col-resize',
         zIndex: 1,
+        borderRight: '1px solid #dee2e6',
       }}
       onMouseDown={(e) => handleMouseDown(columnKey, e)}
     />
