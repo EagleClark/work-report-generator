@@ -58,3 +58,83 @@ import { render, screen } from '@test-utils';
 
 - Playwright 测试命名：`test/e2e/<feature>.spec.ts`
 - 覆盖关键流程：登录、任务 CRUD、周报查看
+
+## 测试模板
+
+### Hook 单测
+
+```tsx
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useXxx } from '@/hooks/useXxx';
+
+function TestComponent() {
+  const { result, action } = useXxx();
+  return (
+    <div>
+      <span data-testid="result">{result}</span>
+      <button data-testid="action-btn" onClick={action}>Action</button>
+    </div>
+  );
+}
+
+describe('useXxx', () => {
+  it('初始状态正确', () => {
+    render(<TestComponent />);
+    expect(screen.getByTestId('result').textContent).toBe('expected');
+  });
+
+  it('action 后状态更新', async () => {
+    const user = userEvent.setup();
+    render(<TestComponent />);
+    await user.click(screen.getByTestId('action-btn'));
+    expect(screen.getByTestId('result').textContent).toBe('updated');
+  });
+});
+```
+
+**要点：**
+- 用 TestComponent 包裹 hook，通过 data-testid 暴露状态
+- 用 userEvent 模拟交互
+- 纯 JS 逻辑的 hook 可直接测试，不渲染 DOM
+
+### 集成测试
+
+```tsx
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MantineProvider } from '@mantine/core';
+import { MemoryRouter } from 'react-router-dom';
+import { XxxComponent } from '@/components/Xxx/Xxx';
+
+// Mock 必要的外部依赖（API、Context 等）
+vi.mock('@/services/xxx.api', () => ({
+  xxxApi: { getAll: vi.fn().mockResolvedValue([]) },
+}));
+vi.mock('@/context/AuthContext', () => ({
+  useAuth: () => ({ user: null, isAuthenticated: false }),
+}));
+
+const TestWrapper = ({ children }: { children: React.ReactNode }) => (
+  <MantineProvider>
+    <MemoryRouter>{children}</MemoryRouter>
+  </MantineProvider>
+);
+
+describe('XxxComponent 集成测试', () => {
+  it('正常渲染并响应交互', async () => {
+    const user = userEvent.setup();
+    render(<XxxComponent />, { wrapper: TestWrapper });
+    await screen.findByText('预期文本');
+    await user.click(screen.getByRole('button', { name: 'Action' }));
+    expect(await screen.findByText('Success')).toBeInTheDocument();
+  });
+});
+```
+
+**要点：**
+- 用 TestWrapper 包裹组件（MantineProvider + MemoryRouter）
+- Mock API 和 Context，测试真实组件交互
+- 用 userEvent 模拟完整用户操作流
