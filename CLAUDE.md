@@ -67,9 +67,9 @@ A full-stack work report generator application with weekly task tracking, AI-pow
 - `superpowers:systematic-debugging` — 遇到 Bug 时系统化调试
 - `superpowers:verification-before-completion` — 完成后跑验证确认通过
 
-### Hookify 工作流规则
+### 工作流守护
 
-以下 hook 规则在关键节点提醒（`.claude/hookify.*.local.md`）：
+以下 hooks 在关键节点提醒（`.claude/settings.json`）：
 - 直接编辑源码 → 提醒使用 agent
 - 执行 `git commit` → 提醒跑测试和 review
 - Session 结束 → 提醒检查工作流完整性
