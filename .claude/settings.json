@@ -3,7 +3,11 @@
     "PreToolUse": [
       {
         "matcher": "Bash(git commit.*)",
-        "message": "提交前请确认：1) 测试全部通过 2) 已做代码检视 3) verification 完成"
+        "message": "⚠️ 提交由用户手动触发。请改为执行 git add 暂存修改，不要执行 git commit。"
+      },
+      {
+        "matcher": "Bash(git add .*)",
+        "message": "确认已暂存本次修改。不要执行 git commit，提交由用户手动触发。"
       },
       {
         "matcher": "Edit|Write",
@@ -13,7 +17,7 @@
     ],
     "Stop": [
       {
-        "message": "结束前检查工作流：brainstorm → TDD → implement → test → review → verify → commit？如有遗漏请继续。"
+        "message": "结束前检查工作流：brainstorm → TDD → implement → test → review → verify？已暂存的修改请提醒用户手动 git commit。"
       }
     ]
   }
