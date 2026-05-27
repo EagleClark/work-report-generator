@@ -73,7 +73,7 @@ export function TaskTable({ refreshTrigger, onDataChange }: TaskTableProps) {
     if (!user) return false;
     if (hasRole([UserRole.ADMIN, UserRole.SUPER_ADMIN])) return true;
     // 检查 userId 或 assignee 匹配
-    const userIdMatch = task.userId && String(task.userId) === String(user.id);
+    const userIdMatch = task.userId != null && task.userId === user.id;
     const assigneeMatch = task.assignee === user.username;
     return userIdMatch || assigneeMatch;
   };

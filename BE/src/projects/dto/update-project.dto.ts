@@ -1,6 +1,7 @@
 import { IsString, IsNotEmpty, MaxLength, IsOptional } from 'class-validator';
 
 export class UpdateProjectDto {
+  @IsOptional()
   @IsString()
   @IsNotEmpty({ message: '项目名称不能为空' })
   @MaxLength(100, { message: '项目名称最多100字符' })

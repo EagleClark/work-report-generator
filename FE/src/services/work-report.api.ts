@@ -1,7 +1,5 @@
-import axios from 'axios';
+import api from './api';
 import type { WorkReport, CreateWorkReportDto, UpdateWorkReportDto, QueryWorkReportDto } from '../types/work-report';
-
-const API_BASE = 'http://localhost:3001/api/work-reports';
 
 export const workReportApi = {
   getAll: async (query?: QueryWorkReportDto): Promise<WorkReport[]> => {
@@ -12,27 +10,27 @@ export const workReportApi = {
     if (query?.weekNumber) {
       params.append('weekNumber', query.weekNumber.toString());
     }
-    const url = params.toString() ? `${API_BASE}?${params}` : API_BASE;
-    const res = await axios.get<WorkReport[]>(url);
+    const url = params.toString() ? `/work-reports?${params}` : '/work-reports';
+    const res = await api.get<WorkReport[]>(url);
     return res.data;
   },
 
   getById: async (id: number): Promise<WorkReport> => {
-    const res = await axios.get<WorkReport>(`${API_BASE}/${id}`);
+    const res = await api.get<WorkReport>(`/work-reports/${id}`);
     return res.data;
   },
 
   create: async (dto: CreateWorkReportDto): Promise<WorkReport> => {
-    const res = await axios.post<WorkReport>(API_BASE, dto);
+    const res = await api.post<WorkReport>('/work-reports', dto);
     return res.data;
   },
 
   update: async (id: number, dto: UpdateWorkReportDto): Promise<WorkReport> => {
-    const res = await axios.put<WorkReport>(`${API_BASE}/${id}`, dto);
+    const res = await api.put<WorkReport>(`/work-reports/${id}`, dto);
     return res.data;
   },
 
   delete: async (id: number): Promise<void> => {
-    await axios.delete(`${API_BASE}/${id}`);
+    await api.delete(`/work-reports/${id}`);
   },
 };

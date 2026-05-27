@@ -30,6 +30,10 @@ export class OpenAIProvider {
       baseURL,
       defaultHeaders: this.parseExtraHeaders(extraHeaders),
     });
+
+    if (!apiKey) {
+      this.logger.warn('AI_API_KEY 未配置，AI 分析功能将不可用');
+    }
   }
 
   private parseExtraHeaders(jsonStr: string): Record<string, string> {

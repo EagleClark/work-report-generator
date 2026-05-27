@@ -16,7 +16,7 @@ export class TaskService {
   async create(createDto: CreateTaskDto, currentUser: User): Promise<Task> {
     // 为任务关联用户ID
     if (!createDto.userId && currentUser) {
-      createDto.userId = currentUser.id.toString();
+      createDto.userId = currentUser.id;
     }
     // 自动填充负责人为当前用户名（普通用户不可修改）
     if (!createDto.assignee && currentUser) {
@@ -55,7 +55,7 @@ export class TaskService {
 
     // 权限检查：普通用户只能修改自己的任务（检查 userId 或 assignee）
     if (currentUser.role === UserRole.USER) {
-      const userIdMatch = task.userId && String(task.userId) === String(currentUser.id);
+      const userIdMatch = task.userId != null && task.userId === currentUser.id;
       const assigneeMatch = task.assignee === currentUser.username;
       if (!userIdMatch && !assigneeMatch) {
         throw new ForbiddenException('你只能修改自己的任务');
@@ -71,7 +71,7 @@ export class TaskService {
 
     // 权限检查：普通用户只能删除自己的任务（检查 userId 或 assignee）
     if (currentUser.role === UserRole.USER) {
-      const userIdMatch = task.userId && String(task.userId) === String(currentUser.id);
+      const userIdMatch = task.userId != null && task.userId === currentUser.id;
       const assigneeMatch = task.assignee === currentUser.username;
       if (!userIdMatch && !assigneeMatch) {
         throw new ForbiddenException('你只能删除自己的任务');
@@ -125,7 +125,7 @@ export class TaskService {
     const targetWeek = { year, weekNumber };
 
     // 确定要复制哪些用户的任务
-    let sourceUserId: string | undefined;
+    let sourceUserId: number | undefined;
     let useOrCondition = false; // 标记是否使用 OR 条件（管理员 SELF 模式）
 
     if (copyMode === CopyMode.SPECIFIC_USER) {
@@ -135,7 +135,7 @@ export class TaskService {
       if (currentUser.role === UserRole.USER) {
         throw new ForbiddenException('只有管理员可以复制其他用户的任务');
       }
-      sourceUserId = targetUserId.toString();
+      sourceUserId = targetUserId;
     } else if (copyMode === CopyMode.ALL) {
       if (currentUser.role === UserRole.USER) {
         throw new ForbiddenException('只有管理员可以复制所有任务');
@@ -148,7 +148,7 @@ export class TaskService {
         useOrCondition = true;
       } else {
         // 普通用户：只查询 userId 匹配的任务
-        sourceUserId = currentUser.id.toString();
+        sourceUserId = currentUser.id;
       }
     }
 
@@ -163,7 +163,7 @@ export class TaskService {
         .andWhere('task.weekNumber = :weekNumber', { weekNumber: sourceWeek.weekNumber })
         .andWhere('task.progress < :progress', { progress: 100 })
         .andWhere('(task.userId = :userId OR task.assignee = :assignee)', {
-          userId: currentUser.id.toString(),
+          userId: currentUser.id,
           assignee: currentUser.username,
         })
         .getMany();

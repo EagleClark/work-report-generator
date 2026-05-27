@@ -4,7 +4,7 @@ export interface WorkReport {
   content: string;
   weekNumber: number;
   year: number;
-  userId?: string;
+  userId?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -14,7 +14,7 @@ export interface CreateWorkReportDto {
   content: string;
   weekNumber: number;
   year: number;
-  userId?: string;
+  userId?: number;
 }
 
 export interface UpdateWorkReportDto {
@@ -22,7 +22,7 @@ export interface UpdateWorkReportDto {
   content?: string;
   weekNumber?: number;
   year?: number;
-  userId?: string;
+  userId?: number;
 }
 
 export interface QueryWorkReportDto {

@@ -72,8 +72,8 @@ export class CreateTaskDto {
   year: number;
 
   @IsOptional()
-  @IsString()
-  userId?: string;
+  @IsNumber()
+  userId?: number;
 }
 
 export class UpdateTaskDto {
@@ -147,8 +147,8 @@ export class UpdateTaskDto {
   year?: number;
 
   @IsOptional()
-  @IsString()
-  userId?: string;
+  @IsNumber()
+  userId?: number;
 }
 
 export class QueryTaskDto {

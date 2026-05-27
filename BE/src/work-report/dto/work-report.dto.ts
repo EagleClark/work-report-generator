@@ -18,8 +18,8 @@ export class CreateWorkReportDto {
   year: number;
 
   @IsOptional()
-  @IsString()
-  userId?: string;
+  @IsNumber()
+  userId?: number;
 }
 
 export class UpdateWorkReportDto {
@@ -40,8 +40,8 @@ export class UpdateWorkReportDto {
   year?: number;
 
   @IsOptional()
-  @IsString()
-  userId?: string;
+  @IsNumber()
+  userId?: number;
 }
 
 export class QueryWorkReportDto {

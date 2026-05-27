@@ -17,7 +17,7 @@ export interface Task {
   remark?: string;
   weekNumber: number;
   year: number;
-  userId?: string;
+  userId?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,7 +40,7 @@ export interface CreateTaskDto {
   remark?: string;
   weekNumber: number;
   year: number;
-  userId?: string;
+  userId?: number;
 }
 
 export interface UpdateTaskDto {
@@ -61,7 +61,7 @@ export interface UpdateTaskDto {
   remark?: string;
   weekNumber?: number;
   year?: number;
-  userId?: string;
+  userId?: number;
 }
 
 export interface QueryTaskDto {

@@ -58,7 +58,7 @@ export class Task {
   year: number;
 
   @Column({ nullable: true })
-  userId: string;
+  userId: number;
 
   @ManyToOne(() => User, user => user.tasks)
   user: User;

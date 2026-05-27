@@ -18,7 +18,7 @@ export class WorkReport {
   year: number;
 
   @Column({ nullable: true })
-  userId: string;
+  userId: number;
 
   @CreateDateColumn()
   createdAt: Date;
