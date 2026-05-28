@@ -118,7 +118,7 @@ describe('UserManagementPage 页面', () => {
         const newUser = {
           id: mockUsers.length + 1,
           username: body.username,
-          role: body.role || 'USER',
+          role: (body.role || UserRole.USER) as UserRole,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };

@@ -2,13 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@test-utils';
 import userEvent from '@testing-library/user-event';
 import { TaskForm } from '@/components/TaskForm/TaskForm';
+import { UserRole } from '@/types/user';
 import type { User } from '@/types/user';
 import type { Project } from '@/services/project.api';
 
 const mockUsers: User[] = [
-  { id: 1, username: 'admin', role: 'ADMIN' as const, createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
-  { id: 2, username: 'user1', role: 'USER' as const, createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
-  { id: 3, username: 'superadmin', role: 'SUPER_ADMIN' as const, createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
+  { id: 1, username: 'admin', role: UserRole.ADMIN as const, createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
+  { id: 2, username: 'user1', role: UserRole.USER, createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
+  { id: 3, username: 'superadmin', role: UserRole.SUPER_ADMIN, createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
 ];
 
 const mockProjects: Project[] = [
@@ -117,7 +118,7 @@ describe('TaskForm 组件（新增模式）', () => {
           onSubmit={mockOnSubmit}
           users={mockUsers}
           projects={mockProjects}
-          currentUser={{ id: 1, username: 'admin', role: 'ADMIN' }}
+          currentUser={{ id: 1, username: 'admin', role: UserRole.ADMIN }}
           defaultYear={2024}
           defaultWeekNumber={1}
         />
@@ -157,7 +158,7 @@ describe('TaskForm 组件（新增模式）', () => {
           onSubmit={mockOnSubmit}
           users={mockUsers}
           projects={mockProjects}
-          currentUser={{ id: 1, username: 'admin', role: 'ADMIN' }}
+          currentUser={{ id: 1, username: 'admin', role: UserRole.ADMIN }}
           defaultYear={2024}
           defaultWeekNumber={1}
         />
@@ -200,7 +201,7 @@ describe('TaskForm 组件（新增模式）', () => {
           onSubmit={mockOnSubmit}
           users={mockUsers}
           projects={mockProjects}
-          currentUser={{ id: 1, username: 'admin', role: 'ADMIN' }}
+          currentUser={{ id: 1, username: 'admin', role: UserRole.ADMIN }}
           defaultYear={2024}
           defaultWeekNumber={1}
         />
@@ -238,7 +239,7 @@ describe('TaskForm 组件（新增模式）', () => {
           onSubmit={mockOnSubmit}
           users={mockUsers}
           projects={mockProjects}
-          currentUser={{ id: 1, username: 'admin', role: 'ADMIN' }}
+          currentUser={{ id: 1, username: 'admin', role: UserRole.ADMIN }}
         />
       );
 
@@ -253,7 +254,7 @@ describe('TaskForm 组件（新增模式）', () => {
           onSubmit={mockOnSubmit}
           users={mockUsers}
           projects={mockProjects}
-          currentUser={{ id: 2, username: 'user1', role: 'USER' }}
+          currentUser={{ id: 2, username: 'user1', role: UserRole.USER }}
         />
       );
 
@@ -269,7 +270,7 @@ describe('TaskForm 组件（新增模式）', () => {
           onSubmit={mockOnSubmit}
           users={mockUsers}
           projects={mockProjects}
-          currentUser={{ id: 3, username: 'superadmin', role: 'SUPER_ADMIN' }}
+          currentUser={{ id: 3, username: 'superadmin', role: UserRole.SUPER_ADMIN }}
         />
       );
 
@@ -364,7 +365,7 @@ describe('TaskForm 组件（新增模式）', () => {
           onSubmit={mockOnSubmit}
           users={mockUsers}
           projects={mockProjects}
-          currentUser={{ id: 1, username: 'admin', role: 'ADMIN' }}
+          currentUser={{ id: 1, username: 'admin', role: UserRole.ADMIN }}
           defaultYear={2024}
           defaultWeekNumber={1}
         />
@@ -385,7 +386,7 @@ describe('TaskForm 组件（新增模式）', () => {
           onSubmit={mockOnSubmit}
           users={mockUsers}
           projects={mockProjects}
-          currentUser={{ id: 1, username: 'admin', role: 'ADMIN' }}
+          currentUser={{ id: 1, username: 'admin', role: UserRole.ADMIN }}
           defaultYear={2024}
           defaultWeekNumber={1}
         />
@@ -418,7 +419,7 @@ describe('TaskForm 组件（新增模式）', () => {
           onSubmit={mockOnSubmit}
           users={mockUsers}
           projects={mockProjects}
-          currentUser={{ id: 1, username: 'admin', role: 'ADMIN' }}
+          currentUser={{ id: 1, username: 'admin', role: UserRole.ADMIN }}
           defaultYear={2024}
           defaultWeekNumber={1}
         />
