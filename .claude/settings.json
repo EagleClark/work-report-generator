@@ -3,21 +3,41 @@
     "PreToolUse": [
       {
         "matcher": "Bash(git commit.*)",
-        "message": "⚠️ 提交由用户手动触发。请改为执行 git add 暂存修改，不要执行 git commit。"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '⚠️ 提交由用户手动触发。请改为执行 git add 暂存修改，不要执行 git commit。' && exit 2"
+          }
+        ]
       },
       {
         "matcher": "Bash(git add .*)",
-        "message": "确认已暂存本次修改。不要执行 git commit，提交由用户手动触发。"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '确认已暂存本次修改。不要执行 git commit，提交由用户手动触发。'"
+          }
+        ]
       },
       {
         "matcher": "Edit|Write",
-        "message": "编码前请确认已执行 brainstorming 和 TDD 步骤。建议使用项目 agent：frontend-dev / backend-dev。",
-        "ifNotIn": ["rules", "CLAUDE.md", ".claude"]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '编码前请确认已执行 brainstorming 和 TDD 步骤。建议使用项目 agent：frontend-dev / backend-dev。'"
+          }
+        ]
       }
     ],
     "Stop": [
       {
-        "message": "结束前检查工作流：brainstorm → TDD → implement → test → review → verify？已暂存的修改请提醒用户手动 git commit。"
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '结束前检查工作流：brainstorm → TDD → implement → test → review → verify？已暂存的修改请提醒用户手动 git commit。'"
+          }
+        ]
       }
     ]
   }
