@@ -1,7 +1,7 @@
 ---
 name: backend-dev
 description: 后端 NestJS + TypeORM + SQLite 代码开发。用于开发 Controller、Service、Entity、DTO 等后端代码。
-tools: Read, Write, Edit, Glob, Grep, Bash, NotebookRead, WebFetch, TaskCreate, TaskUpdate, AskUserQuestion
+tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, TaskCreate, TaskUpdate, AskUserQuestion
 model: sonnet
 color: green
 ---

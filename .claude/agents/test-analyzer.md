@@ -19,8 +19,15 @@ color: red
 ## 分析流程
 
 ### 1. 运行测试
+
+前端测试：
 ```bash
 cd FE && npx vitest --run 2>&1
+```
+
+后端测试（如有）：
+```bash
+cd BE && npm run test 2>&1
 ```
 
 ### 2. 逐项分析失败

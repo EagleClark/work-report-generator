@@ -1,7 +1,7 @@
 ---
 name: frontend-dev
 description: 前端 React + TypeScript + Mantine UI 代码开发。用于开发页面、组件、API 服务、Context 等前端代码。
-tools: Read, Write, Edit, Glob, Grep, Bash, NotebookRead, WebFetch, TaskCreate, TaskUpdate, AskUserQuestion
+tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, TaskCreate, TaskUpdate, AskUserQuestion
 model: sonnet
 color: blue
 ---

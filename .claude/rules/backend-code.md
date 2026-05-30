@@ -71,3 +71,12 @@ feature-name/
 - 流前检查 `isGenerating` 状态防并发
 - 结束后必须 `res.end()`
 - 错误写入结构 `__ERROR__: {...}` 后再 `res.end()`
+
+## 测试
+
+后端**暂无测试框架**，不做 TDD 要求。验证方式：
+
+- `npm run build` 确认 TypeScript 编译通过
+- 手动 curl 或前端联调验证接口行为
+
+如需添加后端测试，推荐 Jest + supertest。

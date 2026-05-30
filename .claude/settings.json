@@ -2,20 +2,15 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash(git commit.*)",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "echo '⚠️ 提交由用户手动触发。请改为执行 git add 暂存修改，不要执行 git commit。' && exit 2"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash(git add .*)",
-        "hooks": [
+            "command": ".claude/hooks/block-git-commit.sh"
+          },
           {
             "type": "command",
-            "command": "echo '确认已暂存本次修改。不要执行 git commit，提交由用户手动触发。'"
+            "command": ".claude/hooks/remind-git-add.sh"
           }
         ]
       },
@@ -24,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '编码前请确认已执行 brainstorming 和 TDD 步骤。建议使用项目 agent：frontend-dev / backend-dev。'"
+            "command": ".claude/hooks/remind-workflow.sh"
           }
         ]
       }

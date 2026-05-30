@@ -49,4 +49,17 @@ color: purple
 
 ## 启动要求
 
-需要后端 `npm run start:dev` + 前端 `npm run dev` 同时运行。
+需要前后端同时运行：
+
+```bash
+# 终端 1：启动后端（端口 3001）
+cd BE && npm run start:dev
+
+# 终端 2：启动前端（端口 5173）
+cd FE && npm run dev
+```
+
+运行测试：
+```bash
+cd FE && npx playwright test
+```
